@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>IvanGym</title>
+  <meta name="description" content="Rutina de gimnasio de Iván: ejercicios, registro de pesos y progreso.">
+  <link rel="stylesheet" href="css/style.css">
+
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="manifest" href="site.webmanifest">
+  <meta name="theme-color" content="#111418">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="IvanGym">
+</head>
+
+<body>
+  <header class="topbar">
+    <h1 class="brand">Ivan<span>Gym</span></h1>
+    <span class="topbar-date" id="topbar-date"></span>
+  </header>
+
+  <main id="view" class="view" tabindex="-1"></main>
+
+  <nav class="tabbar" aria-label="Navegación principal">
+    <a href="#/hoy" data-tab="hoy"><span aria-hidden="true">🏋️</span>Hoy</a>
+    <a href="#/historial" data-tab="historial"><span aria-hidden="true">📅</span>Historial</a>
+    <a href="#/progreso" data-tab="progreso"><span aria-hidden="true">📈</span>Progreso</a>
+    <a href="#/ajustes" data-tab="ajustes"><span aria-hidden="true">⚙️</span>Ajustes</a>
+  </nav>
+
+  <dialog id="dialog" class="dialog"></dialog>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <noscript>Esta aplicación necesita JavaScript.</noscript>
+  <script type="module" src="js/app.js"></script>
+</body>
+
+</html>
