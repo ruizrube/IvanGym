@@ -3,7 +3,7 @@
 ## Project overview
 IvanGym is a mobile-first, offline-capable web app (PWA) for Iván's gym routine: 3 flexible routines, per-set weight logging, extra activities (cardio, walking…), history calendar and progress charts. UI language is Spanish. See `docs/PLAN.md` for the full spec.
 
-It is plain HTML, CSS and JavaScript (ES modules) with **no build step**, deployed to GitHub Pages ("Deploy from branch", `main`, root). Data lives in `localStorage` (`ivangym:v1`) with JSON export/import.
+It is plain HTML, CSS and JavaScript (ES modules) with **no build step**, deployed to GitHub Pages ("Deploy from branch", `master`, root). Data lives in `localStorage` (`ivangym:v1`) with JSON export/import.
 
 ## Structure
 - `index.html` – shell (top bar, `<main id="view">`, bottom tab bar, dialog, toast).

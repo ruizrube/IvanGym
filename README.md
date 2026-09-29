@@ -19,7 +19,7 @@ Abre http://localhost:8000 (en el móvil, usa la IP del ordenador en la misma re
 
 ## Publicar en GitHub Pages
 
-Settings → Pages → *Deploy from a branch* → `main` / `(root)`. No hay paso de build.
+Settings → Pages → *Deploy from a branch* → `master` / `(root)`. No hay paso de build.
 
 ## GIFs de los ejercicios
 
