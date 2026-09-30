@@ -1,5 +1,8 @@
 // Service worker: caché del "app shell" para funcionar sin conexión.
-const VERSION = 'ivangym-v9';
+const VERSION = 'ivangym-v10';
+// Los GIF de los ejercicios no van aquí: la app los guarda en la caché 'ivangym-gifs'
+// a partir de las rutinas de js/data.js (ver precacheGifs en js/app.js).
+const GIF_CACHE = 'ivangym-gifs';
 const SHELL = [
   './',
   'index.html',
@@ -12,24 +15,6 @@ const SHELL = [
   'icon.png',
   'icon-512.png',
   'favicon.ico',
-  'img/exercises/aperturas.gif',
-  'img/exercises/belt-squat.gif',
-  'img/exercises/crunch-abdominal.gif',
-  'img/exercises/curl-biceps.gif',
-  'img/exercises/curl-femoral.gif',
-  'img/exercises/elevaciones-laterales.gif',
-  'img/exercises/extension-cuadriceps.gif',
-  'img/exercises/extension-triceps-maquina.gif',
-  'img/exercises/extension-triceps-polea.gif',
-  'img/exercises/hiperextensiones.gif',
-  'img/exercises/jalon-pecho.gif',
-  'img/exercises/jalon-unilateral.gif',
-  'img/exercises/prensa.gif',
-  'img/exercises/press-militar.gif',
-  'img/exercises/press-pecho.gif',
-  'img/exercises/remo-dorian.gif',
-  'img/exercises/thruster.gif',
-  'img/exercises/zancadas-traseras.gif',
 ];
 
 self.addEventListener('install', (event) => {
@@ -39,7 +24,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION).map((k) => caches.delete(k))))
+      .then((keys) => Promise.all(keys.filter((k) => k !== VERSION && k !== GIF_CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
   );
 });
@@ -54,7 +39,7 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       caches.match(request).then((hit) => hit || fetch(request).then((res) => {
         const copy = res.clone();
-        if (res.ok) caches.open(VERSION).then((c) => c.put(request, copy));
+        if (res.ok) caches.open(GIF_CACHE).then((c) => c.put(request, copy));
         return res;
       })),
     );

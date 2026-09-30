@@ -5,6 +5,15 @@ export const PROFILE = { weightKg: 101, heightM: 1.88 };
 
 const yt = (id) => `https://www.youtube.com/watch?v=${id}`;
 
+/*
+ * Catálogo de ejercicios. La clave es el id (kebab-case) y se usa en las rutinas,
+ * en los datos guardados y en el GIF: img/exercises/<id>.gif (o el campo `gif`).
+ *   name, primary[], secondary[], tip, video  → obligatorios
+ *   note  → aclaración opcional (p. ej. «Peso = cada mancuerna»)
+ *   step  → salto de peso en kg (por defecto WEIGHT_STEP = 2,5)
+ *   gif   → ruta del GIF si no sigue el patrón anterior
+ * No cambies el id de un ejercicio ya usado: se perdería su historial.
+ */
 export const EXERCISES = {
   'jalon-unilateral': {
     name: 'Jalón unilateral',
@@ -144,11 +153,24 @@ export const EXERCISES = {
   },
 };
 
+/*
+ * Rutinas. Para añadir una nueva, copia un bloque y cambia:
+ *   id          → número entero NUEVO y único (nunca reutilices uno antiguo)
+ *   name        → 'Rutina N'
+ *   short       → nombre corto (cabe en un botón: ~16 caracteres)
+ *   description → qué se trabaja, en una frase
+ *   color       → color del distintivo y del calendario
+ *   exercises   → { id: <clave de EXERCISES>, sets, reps }
+ * Para retirar una rutina sin perder su historial, pon `active: false`
+ * (deja de sugerirse y de aparecer para elegir, pero se sigue viendo en el historial).
+ * La sugerencia rota por las rutinas activas en el orden de este array.
+ */
 export const ROUTINES = [
   {
     id: 1,
     name: 'Rutina 1',
     short: 'Pierna y hombro',
+    color: '#339af0',
     description: 'Cuádriceps y glúteos (prensa, extensión, zancadas), con hombro, dorsal y tríceps.',
     exercises: [
       { id: 'jalon-unilateral', sets: 3, reps: 12 },
@@ -163,6 +185,7 @@ export const ROUTINES = [
     id: 2,
     name: 'Rutina 2',
     short: 'Torso y femoral',
+    color: '#9775fa',
     description: 'Pecho y espalda, parte trasera de la pierna y lumbares, más bíceps y hombro.',
     exercises: [
       { id: 'press-pecho', sets: 3, reps: 12 },
@@ -177,6 +200,7 @@ export const ROUTINES = [
     id: 3,
     name: 'Rutina 3',
     short: 'Global y core',
+    color: '#ff6b6b',
     description: 'Ejercicios globales que suben pulsaciones (thruster, belt squat), pecho, dorsal, tríceps y abdomen.',
     exercises: [
       { id: 'thruster', sets: 3, reps: 15 },

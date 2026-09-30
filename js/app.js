@@ -34,8 +34,15 @@ const parseNum = (v) => {
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const routineById = (id) => ROUTINES.find((r) => r.id === id);
+const activeRoutines = () => ROUTINES.filter((r) => r.active !== false);
+/** Atributo style con el color de la rutina (lo usan .badge, .chip y el calendario). */
+const rStyle = (id) => {
+  const c = routineById(id)?.color;
+  return c ? ` style="--rc: ${c}"` : '';
+};
 const activityType = (id) => ACTIVITY_TYPES.find((a) => a.id === id) || ACTIVITY_TYPES.at(-1);
-const gifFor = (exId) => `img/exercises/${exId}.gif`;
+const gifFor = (exId) => EXERCISES[exId]?.gif || `img/exercises/${exId}.gif`;
+const GIF_FALLBACK = `onerror="this.onerror=null;this.src='icon.svg'"`;
 const weekStart = (s) => {
   const d = parseDate(s);
   return addDays(s, -((d.getDay() + 6) % 7));
@@ -102,13 +109,14 @@ function suggestRoutine(date) {
     .sortedSessions()
     .filter((s) => s.date < date && s.routine && store.hasStrength(s))
     .at(-1);
-  return last ? (last.routine % 3) + 1 : 1;
+  const active = activeRoutines();
+  const i = last ? active.findIndex((r) => r.id === last.routine) : -1;
+  return active[(i + 1) % active.length].id;
 }
 
 // ---------- Progresión de cargas ----------
 
 const stepFor = (exId) => EXERCISES[exId]?.step || WEIGHT_STEP;
-const prescFor = (exId) => ROUTINES.flatMap((r) => r.exercises).find((p) => p.id === exId);
 const feelById = (id) => FEELINGS.find((f) => f.id === id);
 const roundTo = (n, step) => Math.round(n / step) * step;
 /** ¿Hizo todas las series y repeticiones prescritas? */
@@ -119,10 +127,9 @@ const completed = (h, presc) => h.sets.length >= presc.sets && h.sets.every((x) 
  * 😎 + todo hecho → sube; 💪 dos veces seguidas con todo hecho (mismo peso) → sube;
  * 😣 dos veces seguidas → baja un 10 %; resto → mantiene.
  */
-function suggestLoad(exId, date) {
+function suggestLoad(exId, presc, date) {
   const [last, prev] = store.exerciseHistory(exId, date);
   if (!last) return null;
-  const presc = prescFor(exId);
   const step = stepFor(exId);
   const kg = store.maxKg(last.sets);
   const done = completed(last, presc);
@@ -150,7 +157,7 @@ function suggestLoad(exId, date) {
 }
 
 function initRows(exId, presc, date) {
-  const sug = suggestLoad(exId, date);
+  const sug = suggestLoad(exId, presc, date);
   const last = sug?.last.sets || [];
   return Array.from({ length: presc.sets }, (_, i) => ({
     kg: sug && sug.action !== 'keep' ? sug.kg : (last[i] || last.at(-1))?.kg ?? 0,
@@ -242,7 +249,7 @@ function renderDay(date) {
     <section class="card">
       ${routine ? `
         <div class="routine-title">
-          <span class="badge r${routine.id}">${routine.id}</span>
+          <span class="badge"${rStyle(routine.id)}>${routine.id}</span>
           <div><h3>${routine.short}</h3><p class="routine-desc">${routine.name} · ${routine.description}</p></div>
         </div>` : `
         <p class="eyebrow">Rutina sugerida</p>
@@ -252,8 +259,8 @@ function renderDay(date) {
         <p class="muted small-text">${suggested.description}</p>
         <p class="muted small-text">O elige otra:</p>`}
       <div class="chips" role="group" aria-label="Elegir rutina">
-        ${ROUTINES.map((r) => `
-          <button class="chip r${r.id} ${routine?.id === r.id ? 'active' : ''}" data-action="routine" data-id="${r.id}" aria-pressed="${routine?.id === r.id}">
+        ${activeRoutines().map((r) => `
+          <button class="chip ${routine?.id === r.id ? 'active' : ''}"${rStyle(r.id)} data-action="routine" data-id="${r.id}" aria-pressed="${routine?.id === r.id}">
             ${r.short}<small>${r.name}</small>
           </button>`).join('')}
         ${routine ? '<button class="chip" data-action="routine" data-id="0">Sin fuerza</button>' : ''}
@@ -287,7 +294,7 @@ function renderDay(date) {
 function exerciseCard(date, s, presc, idx) {
   const ex = EXERCISES[presc.id];
   const rows = s.exercises[presc.id] || [];
-  const sug = suggestLoad(presc.id, date);
+  const sug = suggestLoad(presc.id, presc, date);
   const hist = sug?.last;
   const feel = s.feel?.[presc.id];
   const arrow = { up: '⬆️ sube', keep: '➡️ mantén', down: '⬇️ baja' };
@@ -296,7 +303,7 @@ function exerciseCard(date, s, presc, idx) {
     <article class="card ex-card ${allDone ? 'complete' : ''}" data-ex="${presc.id}">
       <div class="ex-head">
         <button class="gif-btn" data-action="zoom" aria-label="Ampliar animación de ${esc(ex.name)}">
-          <img class="ex-gif" src="${gifFor(presc.id)}" alt="${esc(ex.name)}" loading="lazy" width="116" height="167">
+          <img class="ex-gif" src="${gifFor(presc.id)}" alt="${esc(ex.name)}" loading="lazy" width="116" height="167" ${GIF_FALLBACK}>
         </button>
         <div class="ex-info">
           <h3><span class="muted">${idx + 1}.</span> ${esc(ex.name)}</h3>
@@ -414,7 +421,7 @@ function zoomDialog(exId) {
   const ex = EXERCISES[exId];
   openDialog(`
     <div class="zoom-box" data-close>
-      <img src="${gifFor(exId)}" alt="${esc(ex.name)}">
+      <img src="${gifFor(exId)}" alt="${esc(ex.name)}" ${GIF_FALLBACK}>
       <p>${esc(ex.name)} · <span class="muted">toca para cerrar</span></p>
     </div>`);
 }
@@ -476,10 +483,11 @@ function renderHistory(month) {
     const s = store.getSession(date);
     const strength = s && store.hasStrength(s);
     const act = s && s.activities.length > 0;
-    const cls = ['cal-cell', strength ? `strength r${s.routine || 0}` : act ? 'activity' : '', date === today ? 'today' : ''].join(' ');
+    const cls = ['cal-cell', strength ? 'strength' : act ? 'activity' : '', date === today ? 'today' : ''].join(' ');
+    const style = strength && s.routine ? rStyle(s.routine) : '';
     cells.push(date > today
       ? `<span class="${cls} future">${d}</span>`
-      : `<a class="${cls}" href="#/dia/${date}" aria-label="${fmtDate(date)}">${d}${strength && s.routine ? `<small>R${s.routine}</small>` : ''}${strength && act ? '<i class="dot"></i>' : ''}</a>`);
+      : `<a class="${cls}"${style} href="#/dia/${date}" aria-label="${fmtDate(date)}">${d}${strength && s.routine ? `<small>R${s.routine}</small>` : ''}${strength && act ? '<i class="dot"></i>' : ''}</a>`);
   }
 
   view.innerHTML = `
@@ -495,7 +503,7 @@ function renderHistory(month) {
         ${cells.join('')}
       </div>
       <div class="legend">
-        <span><i class="sw strength"></i>Fuerza</span>
+        <span><i class="sw strength" style="background: linear-gradient(90deg, ${[...activeRoutines(), ...activeRoutines()].slice(0, Math.max(2, activeRoutines().length)).map((r) => r.color).join(', ')})"></i>Fuerza</span>
         <span><i class="sw activity"></i>Solo actividad</span>
         <span><i class="dot"></i>Fuerza + actividad</span>
       </div>
@@ -520,7 +528,7 @@ function sessionSummary(s) {
   return `
     <li><a href="#/dia/${s.date}">
       <span class="date">${cap(fmtDate(s.date, { weekday: 'short', day: 'numeric' }))}</span>
-      <span>${r ? `<span class="badge r${r.id}">${r.id}</span> ${plural(sets, 'serie', 'series')}` : ''} ${acts} <small class="muted nowrap">${fmtKcal(sessionKcal(s))}</small></span>
+      <span>${r ? `<span class="badge"${rStyle(r.id)}>${r.id}</span> ${plural(sets, 'serie', 'series')}` : ''} ${acts} <small class="muted nowrap">${fmtKcal(sessionKcal(s))}</small></span>
     </a></li>`;
 }
 
@@ -549,9 +557,9 @@ function renderProgress() {
       <h3>Días de fuerza por semana</h3>
       ${barChart(weeks)}
     </section>
-    ${ROUTINES.map((r) => `
+    ${ROUTINES.filter((r) => r.active !== false || r.exercises.some((p) => store.exerciseHistory(p.id).length)).map((r) => `
       <section class="card">
-        <div class="routine-title"><span class="badge r${r.id}">${r.id}</span><div><h3>${r.short}</h3><p class="routine-desc">${r.description}</p></div></div>
+        <div class="routine-title"><span class="badge"${rStyle(r.id)}>${r.id}</span><div><h3>${r.short}</h3><p class="routine-desc">${r.description}</p></div></div>
         <ul class="progress-list">
           ${r.exercises.map((p) => {
             const hist = store.exerciseHistory(p.id);
@@ -560,7 +568,7 @@ function renderProgress() {
             const lastMax = last ? store.maxKg(last.sets) : 0;
             const diff = lastMax - firstMax;
             return `<li><a href="#/progreso/${p.id}">
-              <img src="${gifFor(p.id)}" alt="" loading="lazy" width="40" height="58">
+              <img src="${gifFor(p.id)}" alt="" loading="lazy" width="40" height="58" ${GIF_FALLBACK}>
               <span class="name">${esc(EXERCISES[p.id].name)}<small class="muted">${last ? `${plural(hist.length, 'sesión', 'sesiones')} · última ${fmtShort(last.date)}` : 'Sin registros'}</small></span>
               <span class="kg">${last ? `${fmtNum(lastMax)} kg` : '—'}${diff > 0 ? `<small class="up">+${fmtNum(diff)}</small>` : ''}</span>
             </a></li>`;
@@ -656,9 +664,9 @@ function renderSettings() {
     <section class="card">
       <h3>Vídeos de los ejercicios</h3>
       <p class="muted">Pega otro enlace de YouTube si prefieres otro vídeo. Déjalo vacío para volver al original.</p>
-      ${ROUTINES.map((r) => `
-        <h4><span class="badge r${r.id}">${r.id}</span> ${r.short}</h4>
-        ${r.exercises.map((p) => {
+      ${activeRoutines().map((r, ri, all) => `
+        <h4><span class="badge"${rStyle(r.id)}>${r.id}</span> ${r.short}</h4>
+        ${r.exercises.filter((p) => !all.slice(0, ri).some((o) => o.exercises.some((q) => q.id === p.id))).map((p) => {
           const ex = EXERCISES[p.id];
           const custom = store.hasVideoOverride(p.id);
           return `<label class="video-field">${esc(ex.name)}${custom ? ' <small class="up">(personalizado)</small>' : ''}
@@ -892,8 +900,32 @@ window.addEventListener('hashchange', () => {
   window.scrollTo(0, 0);
 });
 
+checkData();
 render();
 showSplash();
+precacheGifs();
+
+/** Avisa en consola de errores al editar rutinas/ejercicios en data.js. */
+function checkData() {
+  const ids = ROUTINES.map((r) => r.id);
+  ids.filter((id, i) => ids.indexOf(id) !== i).forEach((id) => console.error(`[IvanGym] id de rutina repetido: ${id}`));
+  ROUTINES.forEach((r) => {
+    if (!Number.isInteger(r.id) || r.id <= 0) console.error(`[IvanGym] id de rutina no válido: ${r.id}`);
+    r.exercises.forEach((p) => {
+      if (!EXERCISES[p.id]) console.error(`[IvanGym] la rutina ${r.id} usa un ejercicio que no existe: ${p.id}`);
+    });
+  });
+  if (!activeRoutines().length) console.error('[IvanGym] no hay ninguna rutina activa');
+}
+
+/** Guarda en caché los GIF de las rutinas activas para verlos sin conexión en el gimnasio. */
+function precacheGifs() {
+  if (!('caches' in window)) return;
+  const urls = [...new Set(activeRoutines().flatMap((r) => r.exercises.map((p) => gifFor(p.id))))];
+  caches.open('ivangym-gifs')
+    .then((c) => Promise.all(urls.map((u) => c.match(u).then((hit) => hit || c.add(u).catch(() => {})))))
+    .catch(() => {});
+}
 
 // ---------- Splash con mensaje motivador ----------
 

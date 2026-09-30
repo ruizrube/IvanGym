@@ -12,9 +12,6 @@
   --accent-ink: #1a1200;
   --ok: #2f9e5f;
   --danger: #d63c3c;
-  --r1: #339af0;
-  --r2: #9775fa;
-  --r3: #ff6b6b;
   --radius: 14px;
   --tabbar-h: 64px;
   color-scheme: light;
@@ -285,13 +282,9 @@ select {
   font-weight: 800;
   font-size: 0.9rem;
   color: #111;
-  background: var(--muted);
+  background: var(--rc, var(--muted));
   vertical-align: middle;
 }
-
-.badge.r1 { background: var(--r1); }
-.badge.r2 { background: var(--r2); }
-.badge.r3 { background: var(--r3); }
 
 .routine-title {
   display: flex;
@@ -342,9 +335,7 @@ select {
   font-size: 0.75rem;
 }
 
-.chip.r1 { border-top-color: var(--r1); }
-.chip.r2 { border-top-color: var(--r2); }
-.chip.r3 { border-top-color: var(--r3); }
+.chip[style] { border-top-color: var(--rc); }
 
 .chip.active {
   background: #fff3d6;
@@ -730,12 +721,8 @@ select {
 
 .cal-cell.strength {
   color: #111;
-  background: var(--accent);
+  background: var(--rc, var(--accent));
 }
-
-.cal-cell.strength.r1 { background: var(--r1); }
-.cal-cell.strength.r2 { background: var(--r2); }
-.cal-cell.strength.r3 { background: var(--r3); }
 
 .cal-cell.activity {
   background: #b7e4c7;
@@ -779,7 +766,7 @@ select {
 }
 
 .sw.strength {
-  background: linear-gradient(90deg, var(--r1) 33%, var(--r2) 33% 66%, var(--r3) 66%);
+  background: var(--accent);
 }
 
 .sw.activity {

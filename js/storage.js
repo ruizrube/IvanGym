@@ -26,7 +26,7 @@ function normalize(data) {
       .map((s) => ({
         id: s.id || uid(),
         date: s.date,
-        routine: [1, 2, 3].includes(s.routine) ? s.routine : null,
+        routine: Number.isInteger(s.routine) && s.routine > 0 ? s.routine : null,
         exercises: s.exercises && typeof s.exercises === 'object' ? s.exercises : {},
         activities: Array.isArray(s.activities) ? s.activities : [],
         feel: s.feel && typeof s.feel === 'object' ? s.feel : {},
