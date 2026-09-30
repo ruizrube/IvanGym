@@ -23,6 +23,6 @@
   "start_url": "./#/hoy",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#111418",
-  "theme_color": "#111418"
+  "background_color": "#f5f6f8",
+  "theme_color": "#f5f6f8"
 }
