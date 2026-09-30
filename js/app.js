@@ -428,11 +428,11 @@ function videoDialog(exId, kind = 'tech') {
     : '';
   openDialog(`
     <div class="video-box">
-      <h3>${esc(ex.name)} <small class="muted">· ${VIDEO_KINDS[kind].title}</small></h3>
+      <h3>${esc(ex.name)} <small class="muted">${VIDEO_KINDS[kind].title}</small></h3>
       ${tabs}
       ${id ? `<div class="video-frame"><iframe src="https://www.youtube-nocookie.com/embed/${id}?rel=0&playsinline=1" title="Vídeo: ${esc(ex.name)}" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>` : ''}
       <div class="actions">
-        <a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Abrir en YouTube ↗</a>
+        <a class="btn" href="${esc(url)}" target="_blank" rel="noopener">YouTube ↗</a>
         <button class="btn primary" data-close>Cerrar</button>
       </div>
     </div>`);
