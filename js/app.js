@@ -79,7 +79,7 @@ function toast(msg, ms = 2600) {
 
 function openDialog(html, onSubmit) {
   dialog.innerHTML = html;
-  dialog.showModal();
+  if (!dialog.open) dialog.showModal();
   const form = dialog.querySelector('form');
   if (form && onSubmit) {
     form.addEventListener('submit', (e) => {
@@ -91,6 +91,8 @@ function openDialog(html, onSubmit) {
 }
 
 dialog.addEventListener('click', (e) => {
+  const tab = e.target.closest('[data-video-kind]');
+  if (tab) return videoDialog(tab.dataset.ex, tab.dataset.videoKind);
   if (e.target === dialog || e.target.closest('[data-close]')) dialog.close();
 });
 dialog.addEventListener('close', () => {
@@ -309,7 +311,10 @@ function exerciseCard(date, s, presc, idx) {
           <h3><span class="muted">${idx + 1}.</span> ${esc(ex.name)}</h3>
           <p class="muscles"><strong>${ex.primary.join(', ')}</strong>${ex.secondary.length ? `<br><span class="muted">${ex.secondary.join(', ')}</span>` : ''}</p>
           <p class="presc">${presc.sets} × ${presc.reps}</p>
-          <button class="btn small" data-action="video">▶ Ver vídeo</button>
+          <div class="video-btns">
+            <button class="btn small" data-action="video" data-kind="tech">▶ Técnica</button>
+            ${videoUrl(presc.id, 'matrix') ? '<button class="btn small" data-action="video" data-kind="matrix">▶ Matrix</button>' : ''}
+          </div>
         </div>
       </div>
       <p class="ex-tip">💡 ${esc(ex.tip)}${ex.note ? `<br><span class="muted">${esc(ex.note)}</span>` : ''}</p>
@@ -402,13 +407,29 @@ function activityDialog(date) {
   );
 }
 
-function videoDialog(exId) {
+const VIDEO_KINDS = {
+  tech: { label: 'Técnica', title: 'Técnica y buenas prácticas', field: 'video', key: (id) => id },
+  matrix: { label: 'Matrix', title: 'Vídeo oficial Matrix', field: 'matrix', key: (id) => `${id}@matrix` },
+};
+
+function videoUrl(exId, kind) {
+  const k = VIDEO_KINDS[kind];
+  return store.getVideo(k.key(exId), EXERCISES[exId][k.field] || '');
+}
+
+function videoDialog(exId, kind = 'tech') {
   const ex = EXERCISES[exId];
-  const url = store.getVideo(exId, ex.video);
+  const url = videoUrl(exId, kind);
   const id = youtubeId(url);
+  const other = kind === 'tech' ? 'matrix' : 'tech';
+  const tabs = videoUrl(exId, other)
+    ? `<div class="video-tabs">${Object.entries(VIDEO_KINDS).map(([k, v]) =>
+      `<button class="btn small ${k === kind ? 'primary' : ''}" data-video-kind="${k}" data-ex="${exId}">${v.label}</button>`).join('')}</div>`
+    : '';
   openDialog(`
     <div class="video-box">
-      <h3>${esc(ex.name)}</h3>
+      <h3>${esc(ex.name)} <small class="muted">· ${VIDEO_KINDS[kind].title}</small></h3>
+      ${tabs}
       ${id ? `<div class="video-frame"><iframe src="https://www.youtube-nocookie.com/embed/${id}?rel=0&playsinline=1" title="Vídeo: ${esc(ex.name)}" allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowfullscreen></iframe></div>` : ''}
       <div class="actions">
         <a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Abrir en YouTube ↗</a>
@@ -663,15 +684,19 @@ function renderSettings() {
     </section>
     <section class="card">
       <h3>Vídeos de los ejercicios</h3>
-      <p class="muted">Pega otro enlace de YouTube si prefieres otro vídeo. Déjalo vacío para volver al original.</p>
+      <p class="muted">Cada ejercicio tiene un vídeo de técnica y, si existe, el oficial de Matrix. Pega otro enlace de YouTube si prefieres otro vídeo; déjalo vacío para volver al original.</p>
       ${activeRoutines().map((r, ri, all) => `
         <h4><span class="badge"${rStyle(r.id)}>${r.id}</span> ${r.short}</h4>
         ${r.exercises.filter((p) => !all.slice(0, ri).some((o) => o.exercises.some((q) => q.id === p.id))).map((p) => {
           const ex = EXERCISES[p.id];
-          const custom = store.hasVideoOverride(p.id);
-          return `<label class="video-field">${esc(ex.name)}${custom ? ' <small class="up">(personalizado)</small>' : ''}
-            <input type="url" inputmode="url" data-video="${p.id}" value="${esc(store.getVideo(p.id, ex.video))}" placeholder="${esc(ex.video)}">
-          </label>`;
+          return `<div class="video-field"><span>${esc(ex.name)}</span>
+            ${Object.entries(VIDEO_KINDS).map(([k, v]) => {
+              const custom = store.hasVideoOverride(v.key(p.id));
+              const def = ex[v.field] || '';
+              return `<label><small>${v.title}${custom ? ' <span class="up">(personalizado)</span>' : ''}</small>
+                <input type="url" inputmode="url" data-video="${p.id}" data-kind="${k}" value="${esc(videoUrl(p.id, k))}" placeholder="${esc(def || 'Sin vídeo oficial')}"></label>`;
+            }).join('')}
+          </div>`;
         }).join('')}`).join('')}
     </section>
     <section class="card">
@@ -744,7 +769,7 @@ view.addEventListener('click', (e) => {
       break;
     }
     case 'video':
-      videoDialog(exId);
+      videoDialog(exId, btn.dataset.kind);
       break;
     case 'zoom':
       zoomDialog(exId);
@@ -836,13 +861,15 @@ view.addEventListener('change', (e) => {
   }
   if (input.dataset.video) {
     const exId = input.dataset.video;
+    const k = VIDEO_KINDS[input.dataset.kind || 'tech'];
+    const def = EXERCISES[exId][k.field] || '';
     const url = input.value.trim();
     if (url && !/^https?:\/\//.test(url)) {
       toast('Enlace no válido: debe empezar por https://');
       return;
     }
-    store.setVideo(exId, url === EXERCISES[exId].video ? '' : url);
-    toast(url && url !== EXERCISES[exId].video ? 'Vídeo guardado' : 'Vídeo original restaurado');
+    store.setVideo(k.key(exId), url === def ? '' : url);
+    toast(url && url !== def ? 'Vídeo guardado' : 'Vídeo original restaurado');
     render();
     return;
   }

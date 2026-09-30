@@ -9,6 +9,8 @@ const yt = (id) => `https://www.youtube.com/watch?v=${id}`;
  * Catálogo de ejercicios. La clave es el id (kebab-case) y se usa en las rutinas,
  * en los datos guardados y en el GIF: img/exercises/<id>.gif (o el campo `gif`).
  *   name, primary[], secondary[], tip, video  → obligatorios
+ *     video  → vídeo de técnica / buenas prácticas del ejercicio
+ *   matrix → vídeo oficial de Matrix Fitness de esa máquina (solo si existe)
  *   note  → aclaración opcional (p. ej. «Peso = cada mancuerna»)
  *   step  → salto de peso en kg (por defecto WEIGHT_STEP = 2,5)
  *   gif   → ruta del GIF si no sigue el patrón anterior
@@ -27,21 +29,24 @@ export const EXERCISES = {
     primary: ['Cuádriceps'],
     secondary: [],
     tip: 'Rodilla alineada con el eje de la máquina; aguanta 1" arriba y baja controlando. Peso moderado: es un ejercicio exigente para la rodilla.',
-    video: yt('J-Y-Z0EU9Ic'),
+    video: yt('WCLgQ2xGaQg'),
+    matrix: yt('J-Y-Z0EU9Ic'),
   },
   'press-militar': {
     name: 'Press militar (máquina)',
     primary: ['Deltoides anterior y medio'],
     secondary: ['Tríceps', 'Trapecio'],
     tip: 'Espalda pegada al respaldo y sin arquear la zona lumbar.',
-    video: yt('4rb9oFNdXmM'),
+    video: yt('A20O8ZMn190'),
+    matrix: yt('4rb9oFNdXmM'),
   },
   prensa: {
     name: 'Prensa de piernas',
     primary: ['Cuádriceps', 'Glúteos'],
     secondary: ['Isquiotibiales', 'Gemelos'],
     tip: 'No bloquees las rodillas arriba ni despegues la cadera del respaldo abajo (protege la zona lumbar).',
-    video: yt('7xwQsPFpbBo'),
+    video: yt('7NsEZu68ses'),
+    matrix: yt('7xwQsPFpbBo'),
     step: 5,
   },
   'extension-triceps-polea': {
@@ -65,14 +70,16 @@ export const EXERCISES = {
     primary: ['Pectoral'],
     secondary: ['Tríceps', 'Deltoides anterior'],
     tip: 'Asiento a la altura de las asas a mitad del pecho; escápulas juntas.',
-    video: yt('-hwHlnTZ0Bs'),
+    video: yt('N7DjfGB8-xY'),
+    matrix: yt('-hwHlnTZ0Bs'),
   },
   'curl-femoral': {
     name: 'Curl femoral sentado',
     primary: ['Isquiotibiales'],
     secondary: ['Gemelos'],
     tip: 'Ajusta el rodillo sobre los tobillos y baja despacio.',
-    video: yt('KnVkCUh6of8'),
+    video: yt('JZtH3nYax5s'),
+    matrix: yt('KnVkCUh6of8'),
   },
   'remo-dorian': {
     name: 'Remo unilateral Dorian',
@@ -86,7 +93,8 @@ export const EXERCISES = {
     primary: ['Lumbares'],
     secondary: ['Glúteos', 'Isquiotibiales'],
     tip: 'Movimiento lento; no sobrepases la línea recta del cuerpo al subir. Mejor sin peso extra al principio.',
-    video: yt('NiRL6br-Ll8'),
+    video: yt('c_I1ZLuWP6Q'),
+    matrix: yt('NiRL6br-Ll8'),
   },
   'curl-biceps': {
     name: 'Curl de bíceps',
@@ -120,7 +128,8 @@ export const EXERCISES = {
     primary: ['Pectoral'],
     secondary: ['Deltoides anterior'],
     tip: 'Codos ligeramente flexionados; junta las manos apretando el pecho.',
-    video: yt('yc-C53652hg'),
+    video: yt('U5lV7oPW3CA'),
+    matrix: yt('yc-C53652hg'),
   },
   'belt-squat': {
     name: 'Belt Squat',
@@ -128,6 +137,7 @@ export const EXERCISES = {
     secondary: ['Aductores', 'Isquiotibiales'],
     tip: 'Tronco erguido, baja hasta que los muslos queden paralelos al suelo.',
     video: yt('jdRfKAnssDY'),
+    matrix: yt('tY26yuax9VY'),
     step: 5,
   },
   'crunch-abdominal': {
@@ -135,21 +145,24 @@ export const EXERCISES = {
     primary: ['Recto abdominal'],
     secondary: ['Oblicuos'],
     tip: 'Enrolla la columna; la fuerza sale del abdomen, no de los brazos.',
-    video: yt('8AxUa3XlBzM'),
+    video: yt('ih6WDODbY24'),
+    matrix: yt('8AxUa3XlBzM'),
   },
   'extension-triceps-maquina': {
     name: 'Extensión de tríceps (máquina)',
     primary: ['Tríceps'],
     secondary: [],
     tip: 'Codos apoyados y alineados con el eje; extiende del todo sin rebotes.',
-    video: yt('LdUln0rrWA8'),
+    video: yt('RDGZcBxTE74'),
+    matrix: yt('LdUln0rrWA8'),
   },
   'jalon-pecho': {
     name: 'Jalón al pecho',
     primary: ['Dorsal ancho'],
     secondary: ['Bíceps', 'Romboides', 'Deltoides posterior'],
     tip: 'Baja la barra a la parte alta del pecho, sin echarte hacia atrás.',
-    video: yt('SjeQawDt5V0'),
+    video: yt('72q0tKij5uU'),
+    matrix: yt('SjeQawDt5V0'),
   },
 };
 

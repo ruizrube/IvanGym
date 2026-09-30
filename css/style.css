@@ -1073,3 +1073,24 @@ select {
 .nowrap {
   white-space: nowrap;
 }
+
+.video-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.video-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.video-field > span {
+  font-weight: 600;
+}
+
+.video-field label {
+  display: block;
+  margin-top: 6px;
+}
