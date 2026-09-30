@@ -401,6 +401,10 @@ select {
 
 /* ---------- Ejercicios ---------- */
 
+.ex-card {
+  padding: 14px 12px;
+}
+
 .ex-card.complete {
   border-color: var(--ok);
 }
@@ -480,17 +484,16 @@ select {
 .set-head,
 .set-row {
   display: grid;
-  grid-template-columns: 22px 1fr 1fr 48px;
+  grid-template-columns: 18px 1.25fr 1fr 44px;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
 }
 
 .set-head {
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   text-align: center;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
 }
 
 .set-row {
@@ -515,7 +518,8 @@ select {
 
 .stepper button {
   flex: none;
-  width: 38px;
+  width: 30px;
+  padding: 0;
   height: 44px;
   border: 0;
   background: transparent;
@@ -530,18 +534,24 @@ select {
 }
 
 .stepper input {
+  flex: 1;
   width: 100%;
   min-width: 0;
   height: 44px;
+  padding: 0;
   border: 0;
+  border-radius: 0;
   background: transparent;
+  color: var(--text);
+  -webkit-appearance: none;
+  appearance: none;
   text-align: center;
   font-weight: 700;
-  font-size: 1.05rem;
+  font-size: 16px;
 }
 
 .check {
-  width: 48px;
+  width: 44px;
   height: 44px;
   border-radius: 10px;
   border: 2px solid var(--line);
