@@ -222,7 +222,6 @@ function renderDay(date) {
         ${routine ? '<button class="chip" data-action="routine" data-id="0">Sin fuerza</button>' : ''}
       </div>
       ${restHint}
-      <button class="btn" data-action="add-activity">➕ Registrar actividad</button>
     </section>
 
     ${routine ? `<section class="exercises">${routine.exercises.map((p, i) => exerciseCard(date, s, p, i)).join('')}</section>` : ''}
