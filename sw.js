@@ -1,5 +1,5 @@
 // Service worker: caché del "app shell" para funcionar sin conexión.
-const VERSION = 'ivangym-v4';
+const VERSION = 'ivangym-v5';
 const SHELL = [
   './',
   'index.html',
@@ -62,7 +62,7 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    fetch(request)
+    fetch(request, { cache: 'no-cache' })
       .then((res) => {
         const copy = res.clone();
         if (res.ok) caches.open(VERSION).then((c) => c.put(request, copy));
