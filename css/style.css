@@ -300,6 +300,12 @@ select {
   margin-bottom: 4px;
 }
 
+.routine-desc {
+  margin-top: 2px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
 .routine-title .badge {
   width: 40px;
   height: 40px;
@@ -345,28 +351,52 @@ select {
   outline: 2px solid var(--accent);
 }
 
-/* ---------- Mensaje motivador ---------- */
+/* ---------- Splash con mensaje motivador ---------- */
 
-.quote {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  margin: 4px 0 8px;
-  padding: 14px 8px 14px 16px;
-  border-radius: var(--radius);
-  background: linear-gradient(135deg, #fff4d6, #efe8ff);
-  border: 1px solid #f3d9a0;
-  animation: pop 0.35s ease-out;
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: linear-gradient(160deg, #fff4d6, #efe8ff);
+  text-align: center;
+  cursor: pointer;
+  animation: splash-in 0.3s ease-out;
+  transition: opacity 0.4s ease;
 }
 
-.quote p {
-  flex: 1;
-  font-weight: 600;
-  font-size: 1.02rem;
+.splash.out {
+  opacity: 0;
+  pointer-events: none;
 }
 
-@keyframes pop {
-  from { opacity: 0; transform: translateY(-6px); }
+.splash-box {
+  max-width: 420px;
+}
+
+.splash .brand {
+  font-size: 2.2rem;
+  font-weight: 800;
+}
+
+.splash-quote {
+  margin: 28px 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+@keyframes splash-in {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .splash {
+    animation: none;
+    transition: none;
+  }
 }
 
 /* ---------- Ejercicios ---------- */

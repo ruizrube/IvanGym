@@ -142,6 +142,8 @@ export const ROUTINES = [
   {
     id: 1,
     name: 'Rutina 1',
+    short: 'Pierna y hombro',
+    description: 'Cuádriceps y glúteos (prensa, extensión, zancadas), con hombro, dorsal y tríceps.',
     exercises: [
       { id: 'jalon-unilateral', sets: 3, reps: 12 },
       { id: 'extension-cuadriceps', sets: 3, reps: 12 },
@@ -154,6 +156,8 @@ export const ROUTINES = [
   {
     id: 2,
     name: 'Rutina 2',
+    short: 'Torso y femoral',
+    description: 'Pecho y espalda, parte trasera de la pierna y lumbares, más bíceps y hombro.',
     exercises: [
       { id: 'press-pecho', sets: 3, reps: 12 },
       { id: 'curl-femoral', sets: 3, reps: 12 },
@@ -166,6 +170,8 @@ export const ROUTINES = [
   {
     id: 3,
     name: 'Rutina 3',
+    short: 'Global y core',
+    description: 'Ejercicios globales que suben pulsaciones (thruster, belt squat), pecho, dorsal, tríceps y abdomen.',
     exercises: [
       { id: 'thruster', sets: 3, reps: 15 },
       { id: 'aperturas', sets: 3, reps: 12 },

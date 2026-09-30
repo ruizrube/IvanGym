@@ -151,9 +151,6 @@ function recentRecords(days = 7) {
 
 // ---------- Mensaje motivador ----------
 
-let quote = null;
-let quoteDismissed = false;
-
 function pickQuote() {
   const today = todayStr();
   const contextual = [];
@@ -190,14 +187,7 @@ function renderDay(date) {
       ? '<p class="hint">😌 Ayer hiciste fuerza: hoy puede ser buen día para descanso activo (andar, estirar).</p>'
       : '<p class="hint">Consejo: deja ~1 día de descanso activo (andar, estirar) entre días de fuerza.</p>';
 
-  if (isToday && !quote) quote = pickQuote();
-
   view.innerHTML = `
-    ${isToday && !quoteDismissed ? `
-      <section class="quote" role="note">
-        <p>${esc(quote)}</p>
-        <button class="icon-btn" data-action="dismiss-quote" aria-label="Cerrar mensaje">✕</button>
-      </section>` : ''}
     <div class="page-head">
       ${isToday ? '<h2>Hoy</h2>' : `<a class="back" href="#/historial/${date.slice(0, 7)}">← Historial</a>`}
       <p class="muted">${cap(fmtDate(date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }))}</p>
@@ -207,17 +197,18 @@ function renderDay(date) {
       ${routine ? `
         <div class="routine-title">
           <span class="badge r${routine.id}">${routine.id}</span>
-          <div><h3>${routine.name}</h3></div>
+          <div><h3>${routine.short}</h3><p class="routine-desc">${routine.name} · ${routine.description}</p></div>
         </div>` : `
         <p class="eyebrow">Rutina sugerida</p>
         <button class="btn primary big" data-action="routine" data-id="${suggested.id}">
-          Empezar ${suggested.name}
+          Empezar ${suggested.name} · ${suggested.short}
         </button>
+        <p class="muted small-text">${suggested.description}</p>
         <p class="muted small-text">O elige otra:</p>`}
       <div class="chips" role="group" aria-label="Elegir rutina">
         ${ROUTINES.map((r) => `
           <button class="chip r${r.id} ${routine?.id === r.id ? 'active' : ''}" data-action="routine" data-id="${r.id}" aria-pressed="${routine?.id === r.id}">
-            ${r.name}
+            ${r.short}<small>${r.name}</small>
           </button>`).join('')}
         ${routine ? '<button class="chip" data-action="routine" data-id="0">Sin fuerza</button>' : ''}
       </div>
@@ -497,7 +488,7 @@ function renderProgress() {
     </section>
     ${ROUTINES.map((r) => `
       <section class="card">
-        <div class="routine-title"><span class="badge r${r.id}">${r.id}</span><div><h3>${r.name}</h3></div></div>
+        <div class="routine-title"><span class="badge r${r.id}">${r.id}</span><div><h3>${r.short}</h3><p class="routine-desc">${r.description}</p></div></div>
         <ul class="progress-list">
           ${r.exercises.map((p) => {
             const hist = store.exerciseHistory(p.id);
@@ -603,7 +594,7 @@ function renderSettings() {
       <h3>Vídeos de los ejercicios</h3>
       <p class="muted">Pega otro enlace de YouTube si prefieres otro vídeo. Déjalo vacío para volver al original.</p>
       ${ROUTINES.map((r) => `
-        <h4><span class="badge r${r.id}">${r.id}</span> ${r.name}</h4>
+        <h4><span class="badge r${r.id}">${r.id}</span> ${r.short}</h4>
         ${r.exercises.map((p) => {
           const ex = EXERCISES[p.id];
           const custom = store.hasVideoOverride(p.id);
@@ -660,10 +651,6 @@ view.addEventListener('click', (e) => {
   const { action } = btn.dataset;
 
   switch (action) {
-    case 'dismiss-quote':
-      quoteDismissed = true;
-      btn.closest('.quote').remove();
-      break;
     case 'routine': {
       const id = Number(btn.dataset.id) || null;
       const s = store.getSession(date);
@@ -826,6 +813,31 @@ window.addEventListener('hashchange', () => {
 });
 
 render();
+showSplash();
+
+// ---------- Splash con mensaje motivador ----------
+
+function showSplash() {
+  const quote = pickQuote();
+  const el = document.createElement('div');
+  el.className = 'splash';
+  el.setAttribute('role', 'dialog');
+  el.setAttribute('aria-label', 'Mensaje motivador');
+  el.innerHTML = `
+    <div class="splash-box">
+      <p class="brand">Ivan<span>Gym</span></p>
+      <p class="splash-quote">${esc(quote)}</p>
+      <p class="muted small-text">Toca para continuar</p>
+    </div>`;
+  document.body.append(el);
+  const hide = () => {
+    if (el.classList.contains('out')) return;
+    el.classList.add('out');
+    setTimeout(() => el.remove(), 400);
+  };
+  el.addEventListener('click', hide);
+  setTimeout(hide, Math.min(5000, 2500 + quote.length * 25));
+}
 
 if ('serviceWorker' in navigator) {
   // Al activarse una versión nueva del service worker, recarga para ver los cambios al momento.
