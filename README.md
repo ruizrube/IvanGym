@@ -2,7 +2,7 @@
 
 App web móvil (sin backend) para seguir la rutina de gimnasio de Iván, registrar pesos por serie y ver la progresión.
 
-- **Hoy**: rutina sugerida (1 Pierna y hombro → 2 Torso y femoral → 3 Global y core, sin atarse al día de la semana), ejercicios con GIF, músculos, vídeo y registro de series (kg + reps). Actividades opcionales (cardio, andar, estirar…). Estimación de kcal quemadas (para 101 kg). Mensaje motivador en una pantalla de bienvenida al abrir.
+- **Hoy**: rutina sugerida (1 Pierna y hombro → 2 Torso y femoral → 3 Global y core, sin atarse al día de la semana), ejercicios con GIF, músculos, vídeo y registro de series (kg + reps). Al acabar cada ejercicio lo valoras (😣 Duro · 💪 Justo · 😎 Fácil) y la próxima vez propone el peso: sube si fue fácil o si fue justo dos veces seguidas, baja un 10 % tras dos sesiones duras, y si no, mantiene. Actividades opcionales (cardio, andar, estirar…). Estimación de kcal quemadas (para 101 kg). Mensaje motivador en una pantalla de bienvenida al abrir.
 - **Historial**: calendario mensual; toca un día para ver o editar su registro.
 - **Progreso**: días por semana y gráfico del peso máximo por ejercicio.
 - **Ajustes**: exportar/importar JSON, cambiar vídeos, borrar datos.

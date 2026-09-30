@@ -1,5 +1,5 @@
 import {
-  ACTIVITY_TYPES, EXERCISES, MIN_PER_EXERCISE, MIN_PER_SET, PROFILE, QUOTES, ROUTINES, STRENGTH_MET, TIPS, WEIGHT_STEP,
+  ACTIVITY_TYPES, EXERCISES, FEELINGS, MIN_PER_EXERCISE, MIN_PER_SET, PROFILE, QUOTES, ROUTINES, STRENGTH_MET, TIPS, WEIGHT_STEP,
 } from './data.js';
 import * as store from './storage.js';
 
@@ -105,10 +105,55 @@ function suggestRoutine(date) {
   return last ? (last.routine % 3) + 1 : 1;
 }
 
+// ---------- Progresión de cargas ----------
+
+const stepFor = (exId) => EXERCISES[exId]?.step || WEIGHT_STEP;
+const prescFor = (exId) => ROUTINES.flatMap((r) => r.exercises).find((p) => p.id === exId);
+const feelById = (id) => FEELINGS.find((f) => f.id === id);
+const roundTo = (n, step) => Math.round(n / step) * step;
+/** ¿Hizo todas las series y repeticiones prescritas? */
+const completed = (h, presc) => h.sets.length >= presc.sets && h.sets.every((x) => (Number(x.reps) || 0) >= presc.reps);
+
+/**
+ * Peso propuesto para hoy según las dos últimas sesiones del ejercicio:
+ * 😎 + todo hecho → sube; 💪 dos veces seguidas con todo hecho (mismo peso) → sube;
+ * 😣 dos veces seguidas → baja un 10 %; resto → mantiene.
+ */
+function suggestLoad(exId, date) {
+  const [last, prev] = store.exerciseHistory(exId, date);
+  if (!last) return null;
+  const presc = prescFor(exId);
+  const step = stepFor(exId);
+  const kg = store.maxKg(last.sets);
+  const done = completed(last, presc);
+  const sameKg = prev && store.maxKg(prev.sets) === kg;
+  let action = 'keep';
+  let reason;
+  if (last.feel === 'easy' && done) {
+    action = 'up';
+    reason = 'la última vez te resultó fácil';
+  } else if (last.feel === 'ok' && done && prev?.feel === 'ok' && completed(prev, presc) && sameKg) {
+    action = 'up';
+    reason = 'dos sesiones seguidas completas con este peso';
+  } else if (last.feel === 'hard' && prev?.feel === 'hard') {
+    action = 'down';
+    reason = 'dos sesiones seguidas duras';
+  } else if (!last.feel) {
+    reason = done ? 'completaste todo, pero no lo valoraste' : 'no completaste todas las repeticiones';
+  } else if (!done) {
+    reason = 'no completaste todas las repeticiones';
+  } else {
+    reason = last.feel === 'ok' ? 'consolida este peso una sesión más' : 'aún te cuesta: consolida';
+  }
+  const target = action === 'up' ? kg + step : action === 'down' ? Math.max(0, roundTo(kg * 0.9, step)) : kg;
+  return { last, action, kg: target, reason };
+}
+
 function initRows(exId, presc, date) {
-  const last = store.lastSetsFor(exId, date) || [];
+  const sug = suggestLoad(exId, date);
+  const last = sug?.last.sets || [];
   return Array.from({ length: presc.sets }, (_, i) => ({
-    kg: (last[i] || last.at(-1))?.kg ?? 0,
+    kg: sug && sug.action !== 'keep' ? sug.kg : (last[i] || last.at(-1))?.kg ?? 0,
     reps: presc.reps,
     done: false,
   }));
@@ -118,6 +163,7 @@ function setRoutine(date, routineId) {
   const s = store.ensureSession(date);
   s.routine = routineId;
   s.exercises = {};
+  s.feel = {};
   s.finished = false;
   const r = routineById(routineId);
   if (r) r.exercises.forEach((p) => (s.exercises[p.id] = initRows(p.id, p, date)));
@@ -241,7 +287,10 @@ function renderDay(date) {
 function exerciseCard(date, s, presc, idx) {
   const ex = EXERCISES[presc.id];
   const rows = s.exercises[presc.id] || [];
-  const hist = store.exerciseHistory(presc.id, date)[0];
+  const sug = suggestLoad(presc.id, date);
+  const hist = sug?.last;
+  const feel = s.feel?.[presc.id];
+  const arrow = { up: '⬆️ sube', keep: '➡️ mantén', down: '⬇️ baja' };
   const allDone = rows.length > 0 && rows.every((r) => r.done);
   return `
     <article class="card ex-card ${allDone ? 'complete' : ''}" data-ex="${presc.id}">
@@ -257,7 +306,10 @@ function exerciseCard(date, s, presc, idx) {
         </div>
       </div>
       <p class="ex-tip">💡 ${esc(ex.tip)}${ex.note ? `<br><span class="muted">${esc(ex.note)}</span>` : ''}</p>
-      <p class="ex-last">${hist ? `Última vez (${fmtShort(hist.date)}): ${setsSummary(hist.sets)}` : 'Primera vez: empieza con poco peso y buena técnica.'}</p>
+      <p class="ex-last">${hist
+        ? `Última vez (${fmtShort(hist.date)}): ${setsSummary(hist.sets)}${hist.feel ? ` · ${feelById(hist.feel).icon} ${feelById(hist.feel).label}` : ''}`
+        : 'Primera vez: empieza con poco peso y buena técnica.'}</p>
+      ${sug ? `<p class="ex-next next-${sug.action}">${date === todayStr() ? 'Hoy' : 'Propuesta'}: <strong>${fmtNum(sug.kg)} kg</strong> ${arrow[sug.action]} <span class="muted">· ${sug.reason}</span></p>` : ''}
       <div class="sets">
         <div class="set-head"><span>#</span><span>kg</span><span>reps</span><span>hecha</span></div>
         ${rows.map((r, i) => setRow(r, i)).join('')}
@@ -265,6 +317,13 @@ function exerciseCard(date, s, presc, idx) {
       <div class="set-tools">
         <button class="btn small ghost" data-action="remove-set" ${rows.length <= 1 ? 'disabled' : ''}>− Serie</button>
         <button class="btn small ghost" data-action="add-set">+ Serie</button>
+      </div>
+      <div class="feel" role="group" aria-label="¿Qué tal te ha ido?">
+        <span class="feel-q">¿Qué tal?</span>
+        ${FEELINGS.map((f) => `
+          <button class="feel-btn ${f.id}" data-action="feel" data-v="${f.id}" aria-pressed="${feel === f.id}" title="${f.help}">
+            <span aria-hidden="true">${f.icon}</span>${f.label}
+          </button>`).join('')}
       </div>
     </article>`;
 }
@@ -375,6 +434,9 @@ function finishSession(date) {
     if (done.length && isRecord(exId, date, store.maxKg(done))) records.push(EXERCISES[exId].name);
   });
   const minutes = s.activities.reduce((a, x) => a + (Number(x.minutes) || 0), 0);
+  const unrated = Object.entries(s.exercises)
+    .filter(([exId, rows]) => store.doneSets(rows).length && !s.feel?.[exId])
+    .map(([exId]) => EXERCISES[exId].name);
   render();
   openDialog(`
     <div class="summary">
@@ -384,6 +446,7 @@ function finishSession(date) {
         ${minutes ? `<li><strong>${minutes}</strong> min de actividad</li>` : ''}
         ${sets || minutes ? `<li>🔥 <strong>${fmtKcal(sessionKcal(s))}</strong> quemadas (estimación para ${PROFILE.weightKg} kg)</li>` : ''}
         ${records.length ? `<li>🏆 Récord en: ${records.map(esc).join(', ')}</li>` : ''}
+        ${unrated.length ? `<li>📝 Sin valorar (😣 💪 😎): ${unrated.map(esc).join(', ')}. Puedes hacerlo aún desde «Reabrir sesión».</li>` : ''}
         ${!sets && !minutes ? '<li>Hoy no has marcado series. ¡La próxima vez a por ellas!</li>' : ''}
       </ul>
       <p class="quote-inline">${esc(QUOTES[Math.floor(Math.random() * QUOTES.length)])}</p>
@@ -527,7 +590,7 @@ function renderExerciseProgress(exId) {
     <section class="card">
       <h3>Últimas sesiones</h3>
       ${hist.length ? `<ul class="session-list">${hist.slice(0, 15).map((h) => `
-        <li><a href="#/dia/${h.date}"><span class="date">${cap(fmtDate(h.date, { weekday: 'short', day: 'numeric', month: 'short' }))}</span><span>${setsSummary(h.sets)}</span></a></li>`).join('')}</ul>` : '<p class="muted">Sin registros.</p>'}
+        <li><a href="#/dia/${h.date}"><span class="date">${cap(fmtDate(h.date, { weekday: 'short', day: 'numeric', month: 'short' }))}</span><span>${setsSummary(h.sets)}${h.feel ? ` ${feelById(h.feel).icon}` : ''}</span></a></li>`).join('')}</ul>` : '<p class="muted">Sin registros.</p>'}
     </section>`;
 }
 
@@ -682,6 +745,20 @@ view.addEventListener('click', (e) => {
     case 'toggle':
       updateSet(date, exId, Number(row.dataset.i), row, action, btn);
       break;
+    case 'feel': {
+      const s = store.getSession(date);
+      s.feel = s.feel || {};
+      const v = s.feel[exId] === btn.dataset.v ? null : btn.dataset.v;
+      if (v) s.feel[exId] = v;
+      else delete s.feel[exId];
+      store.save();
+      btn.closest('.feel').querySelectorAll('.feel-btn').forEach((b) => b.setAttribute('aria-pressed', b.dataset.v === v));
+      if (v) {
+        const next = { easy: 'la próxima vez, más peso ⬆️', ok: 'mantén el peso; si repites, subirás', hard: 'la próxima vez, mismo peso' }[v];
+        toast(`${feelById(v).icon} Anotado: ${next}`, 2400);
+      }
+      break;
+    }
     case 'add-set':
     case 'remove-set': {
       const rows = store.getSession(date).exercises[exId];
@@ -720,7 +797,7 @@ function updateSet(date, exId, i, rowEl, action, btn) {
   if (action === 'step') {
     const { field } = btn.dataset;
     const d = Number(btn.dataset.d);
-    r[field] = field === 'kg' ? Math.max(0, parseNum(r.kg) + d * WEIGHT_STEP) : Math.max(0, (Number(r.reps) || 0) + d);
+    r[field] = field === 'kg' ? Math.max(0, parseNum(r.kg) + d * stepFor(exId)) : Math.max(0, (Number(r.reps) || 0) + d);
     rowEl.querySelector(`input[data-field="${field}"]`).value = field === 'kg' ? fmtNum(r.kg) : r.reps;
   } else {
     r.done = !r.done;
@@ -733,8 +810,11 @@ function updateSet(date, exId, i, rowEl, action, btn) {
       else toast('Serie hecha ✓ Descansa 1–2 min', 1800);
     }
     rowEl.closest('.ex-card').classList.toggle('complete', rows.every((x) => x.done));
+    if (r.done && rows.every((x) => x.done) && !s.feel?.[exId]) {
+      setTimeout(() => toast('¿Qué tal ese ejercicio? Valóralo abajo 😣 💪 😎', 3000), 1900);
+    }
     const allDone = Object.values(s.exercises).every((rs) => rs.every((x) => x.done));
-    if (r.done && allDone && !s.finished) setTimeout(() => toast('¡Todas las series hechas! Pulsa «Terminar sesión» 🏁', 3500), 1900);
+    if (r.done && allDone && !s.finished) setTimeout(() => toast('¡Todas las series hechas! Pulsa «Terminar sesión» 🏁', 3500), 5000);
   }
   store.save();
 }

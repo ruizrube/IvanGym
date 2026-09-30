@@ -460,6 +460,19 @@ select {
   color: var(--muted);
 }
 
+.ex-next {
+  margin-top: 4px;
+  font-size: 0.88rem;
+}
+
+.ex-next.next-up strong {
+  color: var(--ok);
+}
+
+.ex-next.next-down strong {
+  color: var(--danger);
+}
+
 .sets {
   margin-top: 10px;
 }
@@ -554,6 +567,49 @@ select {
   justify-content: flex-end;
   gap: 8px;
   margin-top: 8px;
+}
+
+.feel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.feel-q {
+  flex: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.feel-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-height: 52px;
+  padding: 6px 4px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.feel-btn span {
+  font-size: 1.3rem;
+}
+
+.feel-btn[aria-pressed="true"] {
+  background: #fff3d6;
+  border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  font-weight: 700;
 }
 
 /* ---------- Actividades ---------- */

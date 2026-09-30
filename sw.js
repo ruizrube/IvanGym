@@ -1,5 +1,5 @@
 // Service worker: caché del "app shell" para funcionar sin conexión.
-const VERSION = 'ivangym-v7';
+const VERSION = 'ivangym-v8';
 const SHELL = [
   './',
   'index.html',

@@ -29,6 +29,7 @@ function normalize(data) {
         routine: [1, 2, 3].includes(s.routine) ? s.routine : null,
         exercises: s.exercises && typeof s.exercises === 'object' ? s.exercises : {},
         activities: Array.isArray(s.activities) ? s.activities : [],
+        feel: s.feel && typeof s.feel === 'object' ? s.feel : {},
         finished: Boolean(s.finished),
       })),
     videoOverrides: data.videoOverrides && typeof data.videoOverrides === 'object' ? data.videoOverrides : {},
@@ -54,7 +55,7 @@ export function getSession(date) {
 export function ensureSession(date) {
   let s = getSession(date);
   if (!s) {
-    s = { id: uid(), date, routine: null, exercises: {}, activities: [], finished: false };
+    s = { id: uid(), date, routine: null, exercises: {}, activities: [], feel: {}, finished: false };
     state.sessions.push(s);
   }
   return s;
@@ -80,7 +81,7 @@ export function exerciseHistory(exId, beforeDate = '9999-99-99') {
   return sortedSessions()
     .filter((s) => s.date < beforeDate && doneSets(s.exercises[exId]).length)
     .reverse()
-    .map((s) => ({ date: s.date, sets: doneSets(s.exercises[exId]) }));
+    .map((s) => ({ date: s.date, sets: doneSets(s.exercises[exId]), feel: s.feel?.[exId] || null }));
 }
 
 export function lastSetsFor(exId, beforeDate) {

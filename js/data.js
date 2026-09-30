@@ -33,6 +33,7 @@ export const EXERCISES = {
     secondary: ['Isquiotibiales', 'Gemelos'],
     tip: 'No bloquees las rodillas arriba ni despegues la cadera del respaldo abajo (protege la zona lumbar).',
     video: yt('7xwQsPFpbBo'),
+    step: 5,
   },
   'extension-triceps-polea': {
     name: 'Extensión de tríceps en polea',
@@ -47,6 +48,7 @@ export const EXERCISES = {
     secondary: ['Isquiotibiales', 'Core'],
     tip: 'Paso atrás largo, tronco erguido y la rodilla de atrás casi roza el suelo.',
     video: yt('2-ihOQEaFJw'),
+    step: 2,
     note: 'Reps por pierna. Peso = cada mancuerna (0 = peso corporal). Empieza sin mancuernas: tu propio peso ya es buena carga.',
   },
   'press-pecho': {
@@ -83,6 +85,7 @@ export const EXERCISES = {
     secondary: ['Braquial', 'Antebrazo'],
     tip: 'Codos fijos junto al cuerpo; sin balancear la espalda.',
     video: yt('qERAhN-qpaU'),
+    step: 1,
     note: 'Peso = cada mancuerna.',
   },
   'elevaciones-laterales': {
@@ -91,6 +94,7 @@ export const EXERCISES = {
     secondary: ['Trapecio'],
     tip: 'Sube hasta la altura de los hombros con los codos ligeramente flexionados.',
     video: yt('hgLpdwMtEEs'),
+    step: 1,
     note: 'Peso = cada mancuerna.',
   },
   thruster: {
@@ -99,6 +103,7 @@ export const EXERCISES = {
     secondary: ['Tríceps', 'Core'],
     tip: 'Sentadilla y, al subir, aprovecha el impulso para empujar sobre la cabeza. Empieza ligero: mueve mucho cuerpo y dispara las pulsaciones.',
     video: yt('NepZAvDeOwc'),
+    step: 2,
     note: 'Peso = cada mancuerna.',
   },
   aperturas: {
@@ -114,6 +119,7 @@ export const EXERCISES = {
     secondary: ['Aductores', 'Isquiotibiales'],
     tip: 'Tronco erguido, baja hasta que los muslos queden paralelos al suelo.',
     video: yt('jdRfKAnssDY'),
+    step: 5,
   },
   'crunch-abdominal': {
     name: 'Crunch abdominal (máquina)',
@@ -197,7 +203,15 @@ export const ACTIVITY_TYPES = [
   { id: 'otra', label: 'Otra', icon: '✨', met: 4.0, group: 'Fuera del gimnasio' },
 ];
 
+// Salto de peso por defecto (máquinas). Cada ejercicio puede definir su `step` (p. ej. mancuernas).
 export const WEIGHT_STEP = 2.5;
+
+// Valoración de cada ejercicio al terminarlo; decide el peso de la próxima vez.
+export const FEELINGS = [
+  { id: 'hard', icon: '😣', label: 'Duro', help: 'No llegué o perdí la técnica' },
+  { id: 'ok', icon: '💪', label: 'Justo', help: 'Llegué, pero apurado' },
+  { id: 'easy', icon: '😎', label: 'Fácil', help: 'Me sobraban 2+ reps' },
+];
 
 // Pesas con descansos (Compendium of Physical Activities: 3,5 moderado – 6 vigoroso). Algo conservador.
 export const STRENGTH_MET = 4.0;
@@ -208,7 +222,7 @@ export const MIN_PER_EXERCISE = 1.5;
 export const TIPS = [
   'Descansa 1–2 min entre series y 3 min entre ejercicios.',
   'Quédate cerca del fallo: llega a las repeticiones, pero que te cueste.',
-  'Si completas todas las series con buena técnica, sube 2,5 kg la próxima vez.',
+  'Al acabar cada ejercicio, valora cómo te fue (😣 💪 😎): la app te propondrá el peso de la próxima vez.',
   'Deja ~1 día de descanso activo (andar, estirar) entre días de fuerza.',
   'Calienta 5–10 min en elíptica o bici antes de las pesas: rodillas y espalda lo agradecen.',
   'Para el cardio, mejor bajo impacto (elíptica, bici, cinta andando con inclinación) que correr: cuida las rodillas.',
