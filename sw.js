@@ -1,5 +1,5 @@
 // Service worker: caché del "app shell" para funcionar sin conexión.
-const VERSION = 'ivangym-v12';
+const VERSION = 'ivangym-v13';
 // Los GIF de los ejercicios no van aquí: la app los guarda en la caché 'ivangym-gifs'
 // a partir de las rutinas de js/data.js (ver precacheGifs en js/app.js).
 const GIF_CACHE = 'ivangym-gifs';
@@ -9,6 +9,7 @@ const SHELL = [
   'css/style.css',
   'js/app.js',
   'js/data.js',
+  'js/muscles.js',
   'js/storage.js',
   'site.webmanifest',
   'icon.svg',

@@ -3,7 +3,9 @@
 const KEY = 'ivangym:v1';
 const QUOTE_KEY = 'ivangym:lastQuote';
 
-const empty = () => ({ sessions: [], videoOverrides: {} });
+export const NOTE_MAX = 200;
+
+const empty = () => ({ sessions: [], videoOverrides: {}, notes: {} });
 
 let state = load();
 
@@ -33,7 +35,19 @@ function normalize(data) {
         finished: Boolean(s.finished),
       })),
     videoOverrides: data.videoOverrides && typeof data.videoOverrides === 'object' ? data.videoOverrides : {},
+    notes: normalizeNotes(data.notes),
   };
+}
+
+function normalizeNotes(notes) {
+  if (!notes || typeof notes !== 'object') return {};
+  return Object.fromEntries(Object.entries(notes)
+    .filter(([, v]) => typeof v === 'string' && v.trim())
+    .map(([k, v]) => [k, cleanNote(v)]));
+}
+
+function cleanNote(text) {
+  return text.replace(/\s+/g, ' ').trim().slice(0, NOTE_MAX);
 }
 
 function uid() {
@@ -105,6 +119,19 @@ export function setVideo(exId, url) {
   if (url) state.videoOverrides[exId] = url;
   else delete state.videoOverrides[exId];
   save();
+}
+
+/** Nota fija del ejercicio (p. ej. dónde está la máquina en el gimnasio). */
+export function getNote(exId) {
+  return state.notes[exId] || '';
+}
+
+export function setNote(exId, text) {
+  const note = cleanNote(text);
+  if (note) state.notes[exId] = note;
+  else delete state.notes[exId];
+  save();
+  return note;
 }
 
 export function exportJSON() {

@@ -125,7 +125,7 @@ select {
   inset: auto 0 0;
   z-index: 10;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   height: calc(var(--tabbar-h) + env(safe-area-inset-bottom));
   padding-bottom: env(safe-area-inset-bottom);
   background: #fff;
@@ -453,6 +453,32 @@ select {
 
 .ex-last {
   color: var(--muted);
+}
+
+.ex-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.ex-note textarea {
+  flex: 1;
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card-2);
+  font: inherit;
+  font-size: 1rem;
+  color: inherit;
+  resize: none;
+  field-sizing: content;
+}
+
+.ex-note textarea:placeholder-shown {
+  border-style: dashed;
 }
 
 .ex-next {
@@ -1143,4 +1169,184 @@ select {
     min-height: 40px;
     padding-block: 6px;
   }
+}
+
+/* ---------- Mapa muscular ---------- */
+
+.body-map {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.body-map.labeled {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.body-view {
+  margin: 0;
+  text-align: center;
+}
+
+.body-view svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0 auto;
+}
+
+.body-view.labeled svg {
+  max-width: 420px;
+}
+
+.body-view figcaption {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.body-view .bone {
+  fill: #e3e7ec;
+}
+
+.body-view .m polygon {
+  fill: #f6dcd5;
+  transition: fill 0.15s;
+}
+
+.body-view .m.sec polygon {
+  fill: #ffa8a8;
+}
+
+.body-view .m.pri polygon {
+  fill: #e03131;
+}
+
+.body-view [data-muscle] {
+  cursor: pointer;
+}
+
+.body-view .m[data-muscle]:hover polygon {
+  fill: var(--accent);
+}
+
+.body-view .lbl text {
+  font-size: 7px;
+  fill: var(--text);
+}
+
+.body-view .lbl.pri text,
+.body-view .lbl.sec text {
+  font-weight: 700;
+}
+
+.body-view .lbl.pri text {
+  fill: #c92a2a;
+}
+
+.body-view .lbl polyline {
+  fill: none;
+  stroke: #9aa5b1;
+  stroke-width: 0.4;
+}
+
+.body-view .lbl circle {
+  fill: #495057;
+}
+
+.muscles {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.muscles .body-map {
+  flex: none;
+  width: 52px;
+  gap: 0;
+}
+
+.muscles .body-view figcaption {
+  display: none;
+}
+
+.mu-legend {
+  margin: 4px 0;
+  font-size: 0.9rem;
+}
+
+.mu-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: baseline;
+}
+
+.mu-dot.pri {
+  background: #e03131;
+}
+
+.mu-dot.sec {
+  background: #ffa8a8;
+}
+
+.dialog .body-map {
+  margin: 10px 0;
+}
+
+.dialog h4 {
+  margin-top: 14px;
+}
+
+.mu-routines {
+  display: flex;
+  gap: 4px;
+}
+
+.muscle-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.muscle-list button {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card-2);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.muscle-list small {
+  font-weight: 400;
+  font-size: 0.75rem;
+}
+
+.dialog .body-map:not(.labeled) {
+  max-width: 160px;
+  margin: 10px auto;
+}
+
+.dialog p + p {
+  margin-top: 6px;
 }

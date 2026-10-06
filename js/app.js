@@ -1,6 +1,9 @@
 import {
   ACTIVITY_TYPES, EXERCISES, FEELINGS, MIN_PER_EXERCISE, MIN_PER_SET, PROFILE, QUOTES, ROUTINES, STRENGTH_MET, TIPS, WEIGHT_STEP,
 } from './data.js';
+import {
+  bodyMap, exerciseMuscles, MUSCLES, unknownMuscles, viewsOf,
+} from './muscles.js';
 import * as store from './storage.js';
 
 const view = document.getElementById('view');
@@ -80,6 +83,7 @@ function toast(msg, ms = 2600) {
 function openDialog(html, onSubmit) {
   dialog.innerHTML = html;
   if (!dialog.open) dialog.showModal();
+  dialog.scrollTop = 0;
   const form = dialog.querySelector('form');
   if (form && onSubmit) {
     form.addEventListener('submit', (e) => {
@@ -93,6 +97,8 @@ function openDialog(html, onSubmit) {
 dialog.addEventListener('click', (e) => {
   const tab = e.target.closest('[data-video-kind]');
   if (tab) return videoDialog(tab.dataset.ex, tab.dataset.videoKind);
+  const muscle = e.target.closest('[data-muscle]');
+  if (muscle) return muscleDialog(muscle.dataset.muscle);
   if (e.target === dialog || e.target.closest('[data-close]')) dialog.close();
 });
 dialog.addEventListener('close', () => {
@@ -309,7 +315,10 @@ function exerciseCard(date, s, presc, idx) {
         </button>
         <div class="ex-info">
           <h3><span class="muted">${idx + 1}.</span> ${esc(ex.name)}</h3>
-          <p class="muscles"><strong>${ex.primary.join(', ')}</strong>${ex.secondary.length ? `<br><span class="muted">${ex.secondary.join(', ')}</span>` : ''}</p>
+          <button class="muscles" data-action="muscles" aria-label="Ver músculos de ${esc(ex.name)} en el mapa">
+            ${bodyMap(exerciseMuscles(ex))}
+            <span><strong>${ex.primary.join(', ')}</strong>${ex.secondary.length ? `<br><span class="muted">${ex.secondary.join(', ')}</span>` : ''}</span>
+          </button>
           <p class="presc">${presc.sets} × ${presc.reps}</p>
           <div class="video-btns">
             <button class="btn small" data-action="video" data-kind="tech">▶ Técnica</button>
@@ -318,6 +327,12 @@ function exerciseCard(date, s, presc, idx) {
         </div>
       </div>
       <p class="ex-tip">💡 ${esc(ex.tip)}${ex.note ? `<br><span class="muted">${esc(ex.note)}</span>` : ''}</p>
+      <label class="ex-note">
+        <span aria-hidden="true">📍</span>
+        <textarea data-note rows="1" maxlength="${store.NOTE_MAX}" enterkeyhint="done" autocomplete="off"
+          placeholder="Dónde está la máquina, ajustes…"
+          aria-label="Nota sobre ${esc(ex.name)} (ubicación de la máquina, ajustes…)">${esc(store.getNote(presc.id))}</textarea>
+      </label>
       <p class="ex-last">${hist
         ? `Última vez (${fmtShort(hist.date)}): ${setsSummary(hist.sets)}${hist.feel ? ` · ${feelById(hist.feel).icon} ${feelById(hist.feel).label}` : ''}`
         : 'Primera vez: empieza con poco peso y buena técnica.'}</p>
@@ -445,6 +460,50 @@ function zoomDialog(exId) {
       <img src="${gifFor(exId)}" alt="${esc(ex.name)}" ${GIF_FALLBACK}>
       <p>${esc(ex.name)} · <span class="muted">toca para cerrar</span></p>
     </div>`);
+}
+
+/** Mapa con los músculos que trabaja un ejercicio. */
+function exerciseMusclesDialog(exId) {
+  const ex = EXERCISES[exId];
+  const m = exerciseMuscles(ex);
+  const views = [...new Set([...m.primary, ...m.secondary].flatMap(viewsOf))];
+  openDialog(`
+    <h3>${esc(ex.name)}</h3>
+    <p class="mu-legend"><span class="mu-dot pri"></span><strong>Principal:</strong> ${ex.primary.join(', ')}</p>
+    ${ex.secondary.length ? `<p class="mu-legend"><span class="mu-dot sec"></span><strong>Secundario:</strong> ${ex.secondary.join(', ')}</p>` : ''}
+    ${bodyMap({ ...m, labels: true, interactive: true }, ['front', 'back'].filter((v) => views.includes(v)))}
+    <p class="muted small-text">Toca un músculo para ver qué es y con qué otros ejercicios lo trabajas.</p>
+    <div class="actions"><button class="btn primary" data-close>Cerrar</button></div>`);
+}
+
+/** Ejercicios de las rutinas activas que trabajan un grupo muscular (principales primero). */
+function exercisesFor(muscleId) {
+  const ids = [...new Set(activeRoutines().flatMap((r) => r.exercises.map((p) => p.id)))];
+  return ids.map((id) => {
+    const m = exerciseMuscles(EXERCISES[id]);
+    const role = m.primary.includes(muscleId) ? 'pri' : m.secondary.includes(muscleId) ? 'sec' : null;
+    return role && { id, role, routines: activeRoutines().filter((r) => r.exercises.some((p) => p.id === id)) };
+  }).filter(Boolean).sort((a, b) => (a.role === b.role ? 0 : a.role === 'pri' ? -1 : 1));
+}
+
+/** Ficha de un grupo muscular: dónde está, para qué sirve y con qué ejercicios se trabaja. */
+function muscleDialog(muscleId) {
+  const mu = MUSCLES[muscleId];
+  if (!mu) return;
+  const list = exercisesFor(muscleId);
+  openDialog(`
+    <h3>${esc(mu.name)}</h3>
+    ${bodyMap({ primary: [muscleId] }, viewsOf(muscleId))}
+    <p><strong>Dónde:</strong> ${esc(mu.where)}</p>
+    <p><strong>Para qué sirve:</strong> ${esc(mu.use)}</p>
+    <h4>Lo trabajas con</h4>
+    ${list.length ? `<ul class="progress-list">${list.map((e) => `
+      <li><a href="#/progreso/${e.id}">
+        <img src="${gifFor(e.id)}" alt="" loading="lazy" width="40" height="58" ${GIF_FALLBACK}>
+        <span class="name">${esc(EXERCISES[e.id].name)}<small class="muted"><span class="mu-dot ${e.role}"></span>${e.role === 'pri' ? 'Principal' : 'Secundario'}</small></span>
+        <span class="mu-routines">${e.routines.map((r) => `<span class="badge"${rStyle(r.id)}>${r.id}</span>`).join('')}</span>
+      </a></li>`).join('')}</ul>` : '<p class="muted">Ningún ejercicio de tus rutinas lo trabaja.</p>'}
+    <div class="actions"><button class="btn primary" data-close>Cerrar</button></div>`);
 }
 
 function finishSession(date) {
@@ -669,6 +728,27 @@ function barChart(items) {
     </svg>`;
 }
 
+// ---------- Vista: músculos ----------
+
+function renderMuscles() {
+  const counts = Object.fromEntries(Object.keys(MUSCLES).map((id) => [id, exercisesFor(id)]));
+  view.innerHTML = `
+    <div class="page-head"><h2>Músculos</h2>
+      <p class="muted">Toca un músculo para ver dónde está, para qué sirve y qué ejercicios de tus rutinas lo trabajan.</p></div>
+    <section class="card">${bodyMap({ labels: true, interactive: true })}</section>
+    <section class="card">
+      <h3>Todos los músculos</h3>
+      <ul class="muscle-list">
+        ${Object.entries(MUSCLES).map(([id, m]) => {
+          const pri = counts[id].filter((e) => e.role === 'pri').length;
+          const n = counts[id].length;
+          return `<li><button data-muscle="${id}"><span>${esc(m.name)}</span>
+            <small class="muted">${n ? `${plural(n, 'ejercicio', 'ejercicios')}${pri ? ` · ${pri} principal${pri > 1 ? 'es' : ''}` : ''}` : 'Sin ejercicios'}</small></button></li>`;
+        }).join('')}
+      </ul>
+    </section>`;
+}
+
 // ---------- Vista: ajustes ----------
 
 function renderSettings() {
@@ -739,6 +819,8 @@ async function importData(file) {
 // ---------- Eventos ----------
 
 view.addEventListener('click', (e) => {
+  const muscle = e.target.closest('[data-muscle]');
+  if (muscle) return muscleDialog(muscle.dataset.muscle);
   const btn = e.target.closest('[data-action]');
   if (!btn || btn.tagName === 'INPUT') return;
   const date = view.dataset.date;
@@ -773,6 +855,9 @@ view.addEventListener('click', (e) => {
       break;
     case 'zoom':
       zoomDialog(exId);
+      break;
+    case 'muscles':
+      exerciseMusclesDialog(exId);
       break;
     case 'step':
     case 'toggle':
@@ -873,6 +958,12 @@ view.addEventListener('change', (e) => {
     render();
     return;
   }
+  if ('note' in input.dataset) {
+    const exId = input.closest('[data-ex]').dataset.ex;
+    input.value = store.setNote(exId, input.value);
+    toast(input.value ? 'Nota guardada 📍' : 'Nota borrada', 1800);
+    return;
+  }
   const { field } = input.dataset;
   if (!field) return;
   const row = input.closest('.set-row');
@@ -881,6 +972,13 @@ view.addEventListener('change', (e) => {
   r[field] = field === 'kg' ? parseNum(input.value) : Math.round(parseNum(input.value));
   input.value = field === 'kg' ? fmtNum(r.kg) : r.reps;
   store.save();
+});
+
+view.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.target.matches('[data-note]')) {
+    e.preventDefault();
+    e.target.blur();
+  }
 });
 
 view.addEventListener('focusin', (e) => {
@@ -911,6 +1009,9 @@ function render() {
       if (param) renderExerciseProgress(param);
       else renderProgress();
       break;
+    case 'musculos':
+      renderMuscles();
+      break;
     case 'ajustes':
       renderSettings();
       break;
@@ -923,6 +1024,7 @@ function render() {
 }
 
 window.addEventListener('hashchange', () => {
+  if (dialog.open) dialog.close();
   render();
   window.scrollTo(0, 0);
 });
@@ -943,6 +1045,7 @@ function checkData() {
     });
   });
   if (!activeRoutines().length) console.error('[IvanGym] no hay ninguna rutina activa');
+  unknownMuscles(EXERCISES).forEach((n) => console.error(`[IvanGym] músculo sin grupo en js/muscles.js: ${n}`));
 }
 
 /** Guarda en caché los GIF de las rutinas activas para verlos sin conexión en el gimnasio. */
