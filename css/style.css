@@ -59,7 +59,8 @@ a {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
   color: inherit;
 }
@@ -1349,4 +1350,418 @@ select {
 
 .dialog p + p {
   margin-top: 6px;
+}
+
+/* ---------- Entrenador ---------- */
+
+.evidence {
+  display: inline-block;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--card-2);
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+
+.coach-banner {
+  border-color: var(--accent);
+  background: #fff8e6;
+}
+
+.coach-banner p + p {
+  margin-top: 8px;
+}
+
+.coach-banner .btn {
+  margin-top: 10px;
+}
+
+.ex-stuck {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #fff4e6;
+  font-size: 0.85rem;
+}
+
+.week-card h4 {
+  margin-top: 16px;
+}
+
+.week-card .body-map {
+  max-width: 320px;
+  margin: 10px auto 0;
+}
+
+.body-view .m.lv-deficit polygon {
+  fill: #ced4da;
+}
+
+.body-view .m.lv-low polygon {
+  fill: #a5d8ff;
+}
+
+.body-view .m.lv-ok polygon {
+  fill: #51cf66;
+}
+
+.body-view .m.lv-high polygon {
+  fill: #fcc419;
+}
+
+.body-view .m.lv-excess polygon {
+  fill: #fa5252;
+}
+
+.vol-legend {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 12px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.vol-legend li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.sw {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+
+.sw.lv-deficit {
+  background: #ced4da;
+}
+
+.sw.lv-low {
+  background: #a5d8ff;
+}
+
+.sw.lv-ok {
+  background: #51cf66;
+}
+
+.sw.lv-high {
+  background: #fcc419;
+}
+
+.sw.lv-excess {
+  background: #fa5252;
+}
+
+.vol-detail {
+  margin-top: 12px;
+  font-size: 0.9rem;
+}
+
+.vol-detail summary {
+  cursor: pointer;
+  font-weight: 600;
+  min-height: 32px;
+}
+
+.vol-detail ul {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.vol-detail li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.coach-alerts {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 0.9rem;
+}
+
+.coach-alerts li {
+  padding: 8px 10px;
+  border-left: 4px solid var(--line);
+  border-radius: 8px;
+  background: var(--card-2);
+}
+
+.coach-alerts li + li {
+  margin-top: 6px;
+}
+
+.coach-alerts li.warn {
+  border-left-color: var(--accent);
+  background: #fff8e6;
+}
+
+.coach-alerts li.info {
+  border-left-color: #339af0;
+  background: #e7f5ff;
+}
+
+.ok-msg {
+  margin-top: 12px;
+  color: var(--ok);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.meter {
+  height: 10px;
+  margin-top: 8px;
+  border-radius: 5px;
+  background: var(--card-2);
+  overflow: hidden;
+}
+
+.meter span {
+  display: block;
+  height: 100%;
+  border-radius: 5px;
+  background: var(--ok);
+}
+
+/* ---------- Rutinas ---------- */
+
+.routine-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.routine-list a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.routine-list .name {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  font-weight: 600;
+}
+
+.routine-list .name small {
+  font-weight: 400;
+}
+
+.routine-list .go {
+  color: var(--muted);
+  font-size: 1.4rem;
+}
+
+.routine-list .retired {
+  opacity: 0.55;
+}
+
+.proposal {
+  border-color: var(--accent);
+}
+
+.swap-list {
+  margin: 12px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.swap-list li {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.swap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.swap-ex {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+
+.swap-ex.out {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.swap .arrow {
+  flex: none;
+  font-weight: 800;
+  color: var(--accent-text);
+}
+
+.swap img,
+.edit-list img {
+  flex: none;
+  width: 40px;
+  height: 58px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.proposal .actions {
+  flex-wrap: wrap;
+}
+
+.proposal .actions .btn.ghost {
+  flex-basis: 100%;
+}
+
+.routine-form label,
+.add-ex {
+  display: block;
+  margin-top: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.routine-form label:first-child {
+  margin-top: 0;
+}
+
+.routine-form input:not([type]),
+.routine-form textarea,
+.edit-list select,
+.add-ex select,
+.edit-nums input {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  min-height: 46px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card-2);
+  font-weight: 400;
+}
+
+.routine-form textarea {
+  resize: vertical;
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 10px;
+}
+
+.routine-form .form-row label {
+  margin-top: 0;
+}
+
+.routine-form .color-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.color-label input {
+  width: 48px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: none;
+}
+
+.routine-form .check-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+}
+
+.check-label input {
+  width: 22px;
+  height: 22px;
+}
+
+.edit-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.edit-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.edit-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.edit-list select {
+  margin-top: 0;
+  font-weight: 600;
+}
+
+.edit-nums {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.edit-nums label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.edit-nums input {
+  width: 64px;
+  min-height: 40px;
+  margin-top: 0;
+  padding: 4px 8px;
+  text-align: center;
+  color: var(--text);
+}
+
+.edit-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.edit-tools .btn.small {
+  min-height: 36px;
+  min-width: 40px;
+  padding: 4px;
+}
+
+.form-actions {
+  margin-bottom: 12px;
 }

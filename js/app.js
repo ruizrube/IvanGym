@@ -1,10 +1,14 @@
 import {
-  ACTIVITY_TYPES, EXERCISES, FEELINGS, MIN_PER_EXERCISE, MIN_PER_SET, PROFILE, QUOTES, ROUTINES, STRENGTH_MET, TIPS, WEIGHT_STEP,
+  ACTIVITY_TYPES, EXERCISES, FEELINGS, MIN_PER_EXERCISE, MIN_PER_SET, PATTERNS, PROFILE, QUOTES, ROUTINES, STRENGTH_MET, TIPS, WEIGHT_STEP,
 } from './data.js';
 import {
   bodyMap, exerciseMuscles, MUSCLES, unknownMuscles, viewsOf,
 } from './muscles.js';
 import * as store from './storage.js';
+import * as coach from './coach.js';
+import {
+  addDays, daysBetween, pad, parseDate, toDateStr, todayStr, weekStart,
+} from './dates.js';
 
 const view = document.getElementById('view');
 const dialog = document.getElementById('dialog');
@@ -12,19 +16,6 @@ const toastEl = document.getElementById('toast');
 
 // ---------- Utilidades ----------
 
-const pad = (n) => String(n).padStart(2, '0');
-const toDateStr = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const todayStr = () => toDateStr(new Date());
-const parseDate = (s) => {
-  const [y, m, d] = s.split('-').map(Number);
-  return new Date(y, m - 1, d);
-};
-const addDays = (s, n) => {
-  const d = parseDate(s);
-  d.setDate(d.getDate() + n);
-  return toDateStr(d);
-};
-const daysBetween = (a, b) => Math.round((parseDate(b) - parseDate(a)) / 86400000);
 const fmtDate = (s, opts = { weekday: 'long', day: 'numeric', month: 'long' }) =>
   parseDate(s).toLocaleDateString('es-ES', opts);
 const fmtShort = (s) => fmtDate(s, { day: 'numeric', month: 'short' });
@@ -36,8 +27,7 @@ const parseNum = (v) => {
 };
 const esc = (s) =>
   String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
-const routineById = (id) => ROUTINES.find((r) => r.id === id);
-const activeRoutines = () => ROUTINES.filter((r) => r.active !== false);
+const { routineById, activeRoutines } = store;
 /** Atributo style con el color de la rutina (lo usan .badge, .chip y el calendario). */
 const rStyle = (id) => {
   const c = routineById(id)?.color;
@@ -46,10 +36,6 @@ const rStyle = (id) => {
 const activityType = (id) => ACTIVITY_TYPES.find((a) => a.id === id) || ACTIVITY_TYPES.at(-1);
 const gifFor = (exId) => EXERCISES[exId]?.gif || `img/exercises/${exId}.gif`;
 const GIF_FALLBACK = `onerror="this.onerror=null;this.src='icon.svg'"`;
-const weekStart = (s) => {
-  const d = parseDate(s);
-  return addDays(s, -((d.getDay() + 6) % 7));
-};
 const hasContent = (s) => Boolean(s) && (store.hasStrength(s) || s.activities.length > 0);
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 // ---------- Calorías estimadas (kcal ≈ MET × kg × horas) ----------
@@ -118,8 +104,17 @@ function suggestRoutine(date) {
     .filter((s) => s.date < date && s.routine && store.hasStrength(s))
     .at(-1);
   const active = activeRoutines();
+  if (!active.length) return null;
   const i = last ? active.findIndex((r) => r.id === last.routine) : -1;
-  return active[(i + 1) % active.length].id;
+  return active[(i + 1) % active.length];
+}
+
+/** Ejercicios de un día: los guardados en la sesión, con la prescripción de su rutina o la deducida de las series. */
+function dayExercises(s, routine) {
+  return Object.entries(s?.exercises || {})
+    .filter(([id]) => EXERCISES[id])
+    .map(([id, rows]) => routine?.exercises.find((p) => p.id === id)
+      || { id, sets: rows.length || 1, reps: Number(rows[0]?.reps) || 12 });
 }
 
 // ---------- Progresión de cargas ----------
@@ -134,6 +129,7 @@ const completed = (h, presc) => h.sets.length >= presc.sets && h.sets.every((x) 
  * Peso propuesto para hoy según las dos últimas sesiones del ejercicio:
  * 😎 + todo hecho → sube; 💪 dos veces seguidas con todo hecho (mismo peso) → sube;
  * 😣 dos veces seguidas → baja un 10 %; resto → mantiene.
+ * Tras un parón en el ejercicio (≥ 14 días) baja un 10-20 % (coach.detraining).
  */
 function suggestLoad(exId, presc, date) {
   const [last, prev] = store.exerciseHistory(exId, date);
@@ -160,7 +156,13 @@ function suggestLoad(exId, presc, date) {
   } else {
     reason = last.feel === 'ok' ? 'consolida este peso una sesión más' : 'aún te cuesta: consolida';
   }
-  const target = action === 'up' ? kg + step : action === 'down' ? Math.max(0, roundTo(kg * 0.9, step)) : kg;
+  let target = action === 'up' ? kg + step : action === 'down' ? Math.max(0, roundTo(kg * 0.9, step)) : kg;
+  const pause = coach.detraining(last.date, date);
+  if (pause && action !== 'down' && kg > 0) {
+    action = 'down';
+    target = Math.max(0, roundTo(kg * pause.factor, step));
+    reason = `llevas ${pause.days} días sin hacerlo${pause.restart ? ': reinicia con calma y sube poco a poco' : ''}`;
+  }
   return { last, action, kg: target, reason };
 }
 
@@ -241,7 +243,7 @@ function renderDay(date) {
   const isToday = date === todayStr();
   const s = store.getSession(date);
   const routine = s?.routine ? routineById(s.routine) : null;
-  const suggested = routineById(suggestRoutine(date));
+  const suggested = suggestRoutine(date);
   const yesterday = store.getSession(addDays(date, -1));
   const restHint =
     !routine && yesterday && store.hasStrength(yesterday)
@@ -258,25 +260,28 @@ function renderDay(date) {
       ${routine ? `
         <div class="routine-title">
           <span class="badge"${rStyle(routine.id)}>${routine.id}</span>
-          <div><h3>${routine.short}</h3><p class="routine-desc">${routine.name} · ${routine.description}</p></div>
-        </div>` : `
+          <div><h3>${esc(routine.short)}</h3><p class="routine-desc">${esc(routine.name)} · ${esc(routine.description)}</p></div>
+        </div>` : suggested ? `
         <p class="eyebrow">Rutina sugerida</p>
         <button class="btn primary big" data-action="routine" data-id="${suggested.id}">
-          Empezar ${suggested.name} · ${suggested.short}
+          Empezar ${esc(suggested.name)} · ${esc(suggested.short)}
         </button>
-        <p class="muted small-text">${suggested.description}</p>
-        <p class="muted small-text">O elige otra:</p>`}
+        <p class="muted small-text">${esc(suggested.description)}</p>
+        <p class="muted small-text">O elige otra:</p>` : `
+        <p class="muted">No tienes rutinas activas. <a href="#/rutinas">Crea o activa una</a>.</p>`}
       <div class="chips" role="group" aria-label="Elegir rutina">
         ${activeRoutines().map((r) => `
           <button class="chip ${routine?.id === r.id ? 'active' : ''}"${rStyle(r.id)} data-action="routine" data-id="${r.id}" aria-pressed="${routine?.id === r.id}">
-            ${r.short}<small>${r.name}</small>
+            ${esc(r.short)}<small>${esc(r.name)}</small>
           </button>`).join('')}
         ${routine ? '<button class="chip" data-action="routine" data-id="0">Sin fuerza</button>' : ''}
       </div>
       ${restHint}
     </section>
 
-    ${routine ? `<section class="exercises">${routine.exercises.map((p, i) => exerciseCard(date, s, p, i)).join('')}</section>` : ''}
+    ${isToday ? coachBanner(date) : ''}
+
+    ${routine ? `<section class="exercises">${dayExercises(s, routine).map((p, i) => exerciseCard(date, s, p, i)).join('')}</section>` : ''}
 
     <section class="card">
       <h3>Actividades</h3>
@@ -298,6 +303,21 @@ function renderDay(date) {
   `;
   view.dataset.date = date;
 }
+
+/** Avisos del entrenador para el día de hoy: descarga y propuestas de rutina. */
+function coachBanner(date) {
+  const fat = coach.fatigue(date);
+  const props = coach.routineProposals(date);
+  if (!fat.deload && !props.length) return '';
+  return `
+    <section class="card coach-banner">
+      ${fat.deload ? `<p>😮‍💨 Has marcado 😣 <strong>${fat.exercises.length} ejercicios</strong> en las dos últimas semanas. Plantéate una <strong>semana de descarga</strong>: baja un 10-20 % el peso o quita una serie. ${evidenceTag('moderate')}</p>` : ''}
+      ${props.length ? `<p>🧭 Tienes ${props.length === 1 ? 'una propuesta' : `${props.length} propuestas`} para renovar ${props.map((p) => `<strong>${esc(p.routine.name)}</strong>`).join(', ')}.</p>
+        <a class="btn small" href="#/rutinas">Ver propuesta${props.length === 1 ? '' : 's'}</a>` : ''}
+    </section>`;
+}
+
+const evidenceTag = (level) => `<span class="evidence" title="${coach.EVIDENCE[level].label}">${coach.EVIDENCE[level].icon} ${coach.EVIDENCE[level].label}</span>`;
 
 function exerciseCard(date, s, presc, idx) {
   const ex = EXERCISES[presc.id];
@@ -337,6 +357,7 @@ function exerciseCard(date, s, presc, idx) {
         ? `Última vez (${fmtShort(hist.date)}): ${setsSummary(hist.sets)}${hist.feel ? ` · ${feelById(hist.feel).icon} ${feelById(hist.feel).label}` : ''}`
         : 'Primera vez: empieza con poco peso y buena técnica.'}</p>
       ${sug ? `<p class="ex-next next-${sug.action}">${date === todayStr() ? 'Hoy' : 'Propuesta'}: <strong>${fmtNum(sug.kg)} kg</strong> ${arrow[sug.action]} <span class="muted">· ${sug.reason}</span></p>` : ''}
+      ${coach.isStagnant(presc.id, date) ? `<p class="ex-stuck">🟠 <strong>Estancado</strong>: 4 sesiones sin mejorar peso ni repeticiones. Prueba a cambiar el rango de repeticiones o a variar el ejercicio en <a href="#/rutinas">Rutinas</a>.</p>` : ''}
       <div class="sets">
         <div class="set-head"><span>#</span><span>kg</span><span>reps</span><span>hecha</span></div>
         ${rows.map((r, i) => setRow(r, i)).join('')}
@@ -625,6 +646,8 @@ function renderProgress() {
     const end = addDays(start, 6);
     return { label: fmtShort(start), value: strength.filter((s) => s.date >= start && s.date <= end).length };
   });
+  const inRoutines = new Set(store.getRoutines().flatMap((r) => r.exercises.map((p) => p.id)));
+  const others = Object.keys(EXERCISES).filter((id) => !inRoutines.has(id) && store.exerciseHistory(id).length);
 
   view.innerHTML = `
     <div class="page-head"><h2>Progreso</h2></div>
@@ -637,24 +660,68 @@ function renderProgress() {
       <h3>Días de fuerza por semana</h3>
       ${barChart(weeks)}
     </section>
-    ${ROUTINES.filter((r) => r.active !== false || r.exercises.some((p) => store.exerciseHistory(p.id).length)).map((r) => `
+    ${strength.length ? weekCard(today) : ''}
+    ${store.getRoutines().filter((r) => r.active || r.exercises.some((p) => store.exerciseHistory(p.id).length)).map((r) => `
       <section class="card">
-        <div class="routine-title"><span class="badge"${rStyle(r.id)}>${r.id}</span><div><h3>${r.short}</h3><p class="routine-desc">${r.description}</p></div></div>
-        <ul class="progress-list">
-          ${r.exercises.map((p) => {
-            const hist = store.exerciseHistory(p.id);
-            const last = hist[0];
-            const firstMax = hist.length ? store.maxKg(hist.at(-1).sets) : 0;
-            const lastMax = last ? store.maxKg(last.sets) : 0;
-            const diff = lastMax - firstMax;
-            return `<li><a href="#/progreso/${p.id}">
-              <img src="${gifFor(p.id)}" alt="" loading="lazy" width="40" height="58" ${GIF_FALLBACK}>
-              <span class="name">${esc(EXERCISES[p.id].name)}<small class="muted">${last ? `${plural(hist.length, 'sesión', 'sesiones')} · última ${fmtShort(last.date)}` : 'Sin registros'}</small></span>
-              <span class="kg">${last ? `${fmtNum(lastMax)} kg` : '—'}${diff > 0 ? `<small class="up">+${fmtNum(diff)}</small>` : ''}</span>
-            </a></li>`;
-          }).join('')}
-        </ul>
-      </section>`).join('')}`;
+        <div class="routine-title"><span class="badge"${rStyle(r.id)}>${r.id}</span><div><h3>${esc(r.short)}${r.active ? '' : ' <small class="muted">(retirada)</small>'}</h3><p class="routine-desc">${esc(r.description)}</p></div></div>
+        ${progressList(r.exercises.map((p) => p.id))}
+      </section>`).join('')}
+    ${others.length ? `
+      <section class="card">
+        <h3>Otros ejercicios con historial</h3>
+        <p class="muted small-text">Ya no están en ninguna rutina, pero conservas sus marcas.</p>
+        ${progressList(others)}
+      </section>` : ''}`;
+}
+
+/** Análisis del entrenador de los últimos 7 días: volumen por músculo, avisos, equilibrio y cardio. */
+function weekCard(today) {
+  const vol = coach.weeklyVolume(today);
+  const freq = coach.weeklyFrequency(today);
+  const levels = Object.fromEntries(Object.entries(vol).map(([m, n]) => [m, coach.volumeLevel(n)]));
+  const tips = coach.alerts(today, activityMet);
+  const bal = coach.balance(today);
+  const cardio = coach.cardioWeek(today, activityMet);
+  const ratio = (v) => (v === null ? '—' : fmtNum(Math.round(v * 10) / 10));
+  const pct = Math.min(100, Math.round((cardio.equivalent / cardio.target[0]) * 100));
+  return `
+    <section class="card week-card">
+      <h3>Últimos 7 días</h3>
+      <p class="muted small-text">Series efectivas por músculo (las de músculos secundarios cuentan la mitad). Lo recomendable para ganar fuerza y músculo es 6-16 series a la semana, repartidas en 2 días o más.</p>
+      ${bodyMap({ levels })}
+      <ul class="vol-legend">${coach.VOLUME_LEVELS.map((l) => `<li><span class="sw lv-${l.id}"></span>${l.label}</li>`).join('')}</ul>
+      <details class="vol-detail">
+        <summary>Detalle por músculo</summary>
+        <ul>${coach.MAJOR_MUSCLES.map((m) => `
+          <li><span>${esc(MUSCLES[m].name)}</span><span><strong>${fmtNum(vol[m])}</strong> series · ${plural(freq[m], 'día', 'días')}</span></li>`).join('')}</ul>
+      </details>
+      ${tips.length ? `<ul class="coach-alerts">${tips.map((t) => `
+        <li class="${t.kind}">${esc(t.text)} ${evidenceTag(t.evidence)}<small class="muted"> · ${esc(t.source)}</small></li>`).join('')}</ul>`
+        : '<p class="ok-msg">✅ Volumen, frecuencia y equilibrio dentro de lo recomendado.</p>'}
+      <h4>Equilibrio (últimos 14 días)</h4>
+      <p class="small-text">Tracción / empuje: <strong>${ratio(bal.pullPush)}</strong> <span class="muted">(${bal.pull} / ${bal.push} series; orientativo 0,8-1,5)</span><br>
+        Pierna / torso: <strong>${ratio(bal.lowerUpper)}</strong> <span class="muted">(${bal.lower} / ${bal.upper} series; orientativo ≥ 0,5)</span></p>
+      <h4>Cardio</h4>
+      <div class="meter" role="img" aria-label="${cardio.equivalent} de ${cardio.target[0]} minutos"><span style="width:${pct}%"></span></div>
+      <p class="small-text"><strong>${cardio.equivalent}</strong> de 150-300 min recomendados por la OMS <span class="muted">(${cardio.moderate} min moderados + ${cardio.vigorous} intensos, que cuentan doble)</span></p>
+    </section>`;
+}
+
+function progressList(exIds) {
+  return `<ul class="progress-list">
+    ${exIds.map((id) => {
+      const hist = store.exerciseHistory(id);
+      const last = hist[0];
+      const firstMax = hist.length ? store.maxKg(hist.at(-1).sets) : 0;
+      const lastMax = last ? store.maxKg(last.sets) : 0;
+      const diff = lastMax - firstMax;
+      return `<li><a href="#/progreso/${id}">
+        <img src="${gifFor(id)}" alt="" loading="lazy" width="40" height="58" ${GIF_FALLBACK}>
+        <span class="name">${esc(EXERCISES[id].name)}<small class="muted">${last ? `${plural(hist.length, 'sesión', 'sesiones')} · última ${fmtShort(last.date)}` : 'Sin registros'}</small></span>
+        <span class="kg">${last ? `${fmtNum(lastMax)} kg` : '—'}${diff > 0 ? `<small class="up">+${fmtNum(diff)}</small>` : ''}</span>
+      </a></li>`;
+    }).join('')}
+  </ul>`;
 }
 
 function renderExerciseProgress(exId) {
@@ -749,11 +816,240 @@ function renderMuscles() {
     </section>`;
 }
 
+// ---------- Vista: rutinas ----------
+
+const ROUTINE_COLORS = ['#339af0', '#9775fa', '#ff6b6b', '#20c997', '#fab005', '#f76707', '#e64980', '#868e96'];
+const SNOOZE_DAYS = 14;
+const NEW_EXERCISE = { sets: 3, reps: 12 };
+/** Rutina en edición; se conserva entre renders del editor y se descarta al salir de él. */
+let draft = null;
+
+const weeksOn = (r) => Math.floor(daysBetween(r.since, todayStr()) / 7);
+
+function renderRoutines() {
+  const props = coach.routineProposals(todayStr());
+  view.innerHTML = `
+    <div class="page-head"><a class="back" href="#/ajustes">← Ajustes</a><h2>Rutinas</h2>
+      <p class="muted">Las rutinas activas se sugieren por turnos cada día de fuerza.</p></div>
+    ${props.map(proposalCard).join('')}
+    <section class="card">
+      <ul class="routine-list">${store.getRoutines().map((r) => `
+        <li class="${r.active ? '' : 'retired'}"><a href="#/rutinas/${r.id}">
+          <span class="badge"${rStyle(r.id)}>${r.id}</span>
+          <span class="name">${esc(r.name)} · ${esc(r.short)}
+            <small class="muted">${plural(r.exercises.length, 'ejercicio', 'ejercicios')} · ${r.active ? `versión desde ${fmtShort(r.since)} (${plural(weeksOn(r), 'semana', 'semanas')})` : 'retirada'}</small></span>
+          <span class="go" aria-hidden="true">›</span></a></li>`).join('')}
+      </ul>
+      <a class="btn" href="#/rutinas/nueva">➕ Nueva rutina</a>
+    </section>
+    <section class="card tips">
+      <h3>Cómo te propongo cambios</h3>
+      <ul>
+        <li>Trabaja cada grupo muscular al menos 2 días por semana. ${evidenceTag('strong')}</li>
+        <li>Apunta a 6-16 series semanales por músculo; más volumen suma, pero cada vez menos. ${evidenceTag('moderate')}</li>
+        <li>Variar el estímulo de forma planificada mejora la fuerza frente a repetir siempre lo mismo. ${evidenceTag('moderate')}</li>
+        <li>Te propongo una variante a las ${coach.PROPOSAL_WEEKS} semanas de una versión, o antes si 2 ejercicios llevan 4 sesiones sin progresar. Cambio como mucho 2 ejercicios por otros del mismo movimiento y mantengo series y repeticiones. ${evidenceTag('heuristic')}</li>
+        <li>Si haces bastante más empuje que tracción, uno de esos cambios pasa un ejercicio de empuje repetido (p. ej. tu segundo de tríceps) a uno de tracción. ${evidenceTag('heuristic')}</li>
+      </ul>
+      <p class="muted small-text">Fuentes: ACSM 2009; Garber et al. 2011; OMS 2020; Schoenfeld et al. 2017; Pelland et al. 2025; Williams et al. 2017; Moesgaard et al. 2022.</p>
+    </section>`;
+}
+
+function proposalCard(p) {
+  const r = p.routine;
+  const exImg = (id) => `<img src="${gifFor(id)}" alt="" loading="lazy" width="40" height="58" ${GIF_FALLBACK}>`;
+  return `
+    <section class="card proposal" data-routine="${r.id}">
+      <p class="eyebrow">Propuesta</p>
+      <div class="routine-title"><span class="badge"${rStyle(r.id)}>${r.id}</span>
+        <div><h3>Renovar ${esc(r.name)}</h3><p class="routine-desc">${esc(r.short)}</p></div></div>
+      <ul class="coach-alerts">${p.reasons.map((x) => `
+        <li>${esc(x.text)} ${evidenceTag(x.evidence)}<small class="muted"> · ${esc(x.source)}</small></li>`).join('')}</ul>
+      <ul class="swap-list">${p.changes.map((c) => `
+        <li>
+          <div class="swap">
+            <span class="swap-ex out">${exImg(c.from)}<span>${esc(EXERCISES[c.from].name)}</span></span>
+            <span class="arrow" aria-label="se cambia por">→</span>
+            <span class="swap-ex in">${exImg(c.to)}<span>${esc(EXERCISES[c.to].name)}</span></span>
+          </div>
+          <small class="muted">${esc(c.why)}</small>
+        </li>`).join('')}</ul>
+      <p class="muted small-text">Se mantienen las series y repeticiones. Al aceptar empieza una versión nueva de la rutina; tus marcas anteriores se conservan.</p>
+      <div class="actions">
+        <button class="btn primary" data-action="accept-proposal">✅ Aceptar</button>
+        <button class="btn" data-action="edit-proposal">✏️ Editar antes</button>
+        <button class="btn ghost" data-action="snooze-proposal">⏰ Posponer 2 semanas</button>
+      </div>
+    </section>`;
+}
+
+function newRoutineDraft() {
+  const used = store.getRoutines().map((r) => r.color);
+  return {
+    id: null,
+    name: '',
+    short: '',
+    description: '',
+    color: ROUTINE_COLORS.find((c) => !used.includes(c)) || ROUTINE_COLORS.at(-1),
+    active: true,
+    exercises: [],
+  };
+}
+
+function renderRoutineEditor(param) {
+  const id = param === 'nueva' ? null : Number(param);
+  const r = id === null ? null : routineById(id);
+  if (id !== null && !r) {
+    navigate('#/rutinas');
+    return;
+  }
+  if (!draft || draft.id !== id) draft = r ? structuredClone(r) : newRoutineDraft();
+  const used = new Set(draft.exercises.map((p) => p.id));
+  const muscles = draft.exercises.map((p) => exerciseMuscles(EXERCISES[p.id]));
+  const primary = [...new Set(muscles.flatMap((m) => m.primary))];
+  const secondary = [...new Set(muscles.flatMap((m) => m.secondary))].filter((m) => !primary.includes(m));
+  const missing = coach.MAJOR_MUSCLES.filter((m) => !primary.includes(m));
+  view.innerHTML = `
+    <div class="page-head"><a class="back" href="#/rutinas">← Rutinas</a>
+      <h2>${r ? `Editar ${esc(r.name)}` : 'Nueva rutina'}</h2></div>
+    <section class="card routine-form">
+      <label>Nombre<input data-rfield="name" maxlength="40" value="${esc(draft.name)}" placeholder="Rutina ${id ?? store.nextRoutineId()}"></label>
+      <label>Nombre corto<input data-rfield="short" maxlength="${store.ROUTINE_LIMITS.short}" value="${esc(draft.short)}" placeholder="Pecho y espalda"></label>
+      <label>Descripción<textarea data-rfield="description" rows="2" maxlength="${store.ROUTINE_LIMITS.description}">${esc(draft.description)}</textarea></label>
+      <div class="form-row">
+        <label class="color-label">Color<input type="color" data-rfield="color" value="${draft.color}"></label>
+        <label class="check-label"><input type="checkbox" data-rfield="active" ${draft.active ? 'checked' : ''}> Activa (se sugiere en «Hoy»)</label>
+      </div>
+    </section>
+    <section class="card">
+      <h3>Ejercicios</h3>
+      ${draft.exercises.length ? `<ol class="edit-list">${draft.exercises.map((p, i) => editRow(p, i, used)).join('')}</ol>` : '<p class="muted">Añade al menos un ejercicio.</p>'}
+      <label class="add-ex">➕ Añadir ejercicio${exerciseSelect('add', '', used)}</label>
+    </section>
+    ${draft.exercises.length ? `
+      <section class="card">
+        <h3>Músculos que trabaja</h3>
+        ${bodyMap({ primary, secondary })}
+        ${missing.length ? `<p class="small-text">Sin trabajo principal: ${missing.map((m) => esc(MUSCLES[m].name.toLowerCase())).join(', ')}. Si no los cubre otra rutina, añade algún ejercicio para ellos.</p>` : '<p class="ok-msg">✅ Cubre todos los grupos musculares principales.</p>'}
+      </section>` : ''}
+    <div class="actions form-actions">
+      <button class="btn primary" data-action="save-routine">💾 Guardar</button>
+      <a class="btn ghost" href="#/rutinas">Cancelar</a>
+    </div>`;
+}
+
+function editRow(p, i, used) {
+  const ex = EXERCISES[p.id];
+  const [minSets, maxSets] = store.ROUTINE_LIMITS.sets;
+  const [minReps, maxReps] = store.ROUTINE_LIMITS.reps;
+  return `
+    <li data-i="${i}">
+      <img src="${gifFor(p.id)}" alt="" loading="lazy" width="40" height="58" ${GIF_FALLBACK}>
+      <div class="edit-main">
+        ${exerciseSelect('swap', p.id, used, `Ejercicio ${i + 1}`)}
+        <div class="edit-nums">
+          <label><input type="number" data-num="sets" inputmode="numeric" min="${minSets}" max="${maxSets}" value="${p.sets}" aria-label="Series de ${esc(ex.name)}"> series</label>
+          <label>× <input type="number" data-num="reps" inputmode="numeric" min="${minReps}" max="${maxReps}" value="${p.reps}" aria-label="Repeticiones de ${esc(ex.name)}"> reps</label>
+        </div>
+      </div>
+      <div class="edit-tools">
+        <button class="btn small ghost" data-action="ex-up" ${i ? '' : 'disabled'} aria-label="Subir ${esc(ex.name)}">↑</button>
+        <button class="btn small ghost" data-action="ex-down" ${i < draft.exercises.length - 1 ? '' : 'disabled'} aria-label="Bajar ${esc(ex.name)}">↓</button>
+        <button class="btn small ghost" data-action="ex-remove" aria-label="Quitar ${esc(ex.name)}">✕</button>
+      </div>
+    </li>`;
+}
+
+/** Desplegable de ejercicios agrupados por patrón de movimiento (sin los ya usados en la rutina). */
+function exerciseSelect(kind, current, used, label = 'Añadir ejercicio') {
+  const groups = Object.entries(PATTERNS).map(([pid, pat]) => {
+    const opts = Object.entries(EXERCISES)
+      .filter(([id, e]) => e.pattern === pid && (id === current || !used.has(id)))
+      .sort(([, a], [, b]) => a.name.localeCompare(b.name, 'es'))
+      .map(([id, e]) => `<option value="${id}"${id === current ? ' selected' : ''}>${esc(e.name)}</option>`)
+      .join('');
+    return opts ? `<optgroup label="${esc(pat.name)}">${opts}</optgroup>` : '';
+  }).join('');
+  return `<select data-${kind} aria-label="${esc(label)}">${kind === 'add' ? '<option value="">Elige un ejercicio…</option>' : ''}${groups}</select>`;
+}
+
+function saveDraft() {
+  if (!draft.exercises.length) {
+    toast('Añade al menos un ejercicio');
+    return;
+  }
+  const others = activeRoutines().filter((r) => r.id !== draft.id);
+  if (!draft.active && !others.length && !confirm('No quedará ninguna rutina activa y «Hoy» no te sugerirá ninguna. ¿Guardar igualmente?')) return;
+  const saved = store.saveRoutine(draft);
+  draft = null;
+  toast(`Rutina ${saved.name} guardada 💾`);
+  precacheGifs();
+  navigate('#/rutinas');
+}
+
+function proposalAction(action, routineId) {
+  const p = coach.routineProposals(todayStr()).find((x) => x.routine.id === routineId);
+  if (!p) return;
+  if (action === 'accept-proposal') {
+    store.saveRoutine({ id: routineId, exercises: p.exercises });
+    toast(`${p.routine.name} renovada ✅ ¡A por la nueva versión!`);
+    precacheGifs();
+    render();
+  } else if (action === 'edit-proposal') {
+    draft = { ...structuredClone(p.routine), exercises: structuredClone(p.exercises) };
+    navigate(`#/rutinas/${routineId}`);
+  } else {
+    store.snoozeRoutine(routineId, addDays(todayStr(), SNOOZE_DAYS));
+    toast(`Te lo vuelvo a proponer en ${SNOOZE_DAYS} días ⏰`);
+    render();
+  }
+}
+
+/** Cambios del editor de rutinas: campos, ejercicios, series y repeticiones. */
+function editDraft(input) {
+  const i = Number(input.closest('[data-i]')?.dataset.i);
+  if (input.dataset.rfield) {
+    const k = input.dataset.rfield;
+    draft[k] = k === 'active' ? input.checked : input.value;
+    return false;
+  }
+  if ('num' in input.dataset) {
+    const lim = store.ROUTINE_LIMITS[input.dataset.num];
+    const n = Math.min(lim[1], Math.max(lim[0], Math.round(parseNum(input.value)) || lim[0]));
+    draft.exercises[i][input.dataset.num] = n;
+    input.value = n;
+    return false;
+  }
+  if ('swap' in input.dataset) draft.exercises[i] = { ...draft.exercises[i], id: input.value };
+  else if ('add' in input.dataset && input.value) draft.exercises.push({ id: input.value, ...NEW_EXERCISE });
+  return true;
+}
+
+function moveExercise(action, i) {
+  const list = draft.exercises;
+  if (action === 'ex-remove') list.splice(i, 1);
+  else {
+    const j = action === 'ex-up' ? i - 1 : i + 1;
+    if (j < 0 || j >= list.length) return;
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  render();
+}
+
 // ---------- Vista: ajustes ----------
 
 function renderSettings() {
   view.innerHTML = `
     <div class="page-head"><h2>Ajustes</h2></div>
+    <section class="card">
+      <h3>Rutinas</h3>
+      <p class="muted">Crea, edita o retira rutinas y revisa las propuestas de cambio basadas en tu historial.</p>
+      ${(() => {
+        const n = coach.routineProposals(todayStr()).length;
+        return n ? `<p class="small-text">💡 ${plural(n, 'propuesta pendiente', 'propuestas pendientes')}</p>` : '';
+      })()}
+      <a class="btn primary" href="#/rutinas">📋 Gestionar rutinas</a>
+    </section>
     <section class="card">
       <h3>Copia de seguridad</h3>
       <p class="muted">Los datos se guardan solo en este dispositivo. Exporta de vez en cuando para no perderlos.</p>
@@ -766,7 +1062,7 @@ function renderSettings() {
       <h3>Vídeos de los ejercicios</h3>
       <p class="muted">Cada ejercicio tiene un vídeo de técnica y, si existe, el oficial de Matrix. Pega otro enlace de YouTube si prefieres otro vídeo; déjalo vacío para volver al original.</p>
       ${activeRoutines().map((r, ri, all) => `
-        <h4><span class="badge"${rStyle(r.id)}>${r.id}</span> ${r.short}</h4>
+        <h4><span class="badge"${rStyle(r.id)}>${r.id}</span> ${esc(r.short)}</h4>
         ${r.exercises.filter((p) => !all.slice(0, ri).some((o) => o.exercises.some((q) => q.id === p.id))).map((p) => {
           const ex = EXERCISES[p.id];
           return `<div class="video-field"><span>${esc(ex.name)}</span>
@@ -783,9 +1079,13 @@ function renderSettings() {
       <h3>Instalar en el móvil</h3>
       <p class="muted">iPhone (Safari): Compartir → «Añadir a pantalla de inicio». Android (Chrome): menú ⋮ → «Instalar aplicación». Funciona sin conexión en el gimnasio (los vídeos necesitan internet).</p>
     </section>
+    <section class="card">
+      <h3>Créditos</h3>
+      <p class="muted small-text">Imágenes de los ejercicios alternativos: <a href="https://github.com/yuhonas/free-exercise-db" target="_blank" rel="noopener">free-exercise-db</a> (dominio público, Unlicense). Mapa muscular adaptado de <a href="https://github.com/giavinh79/react-body-highlighter" target="_blank" rel="noopener">react-body-highlighter</a> (MIT). Las recomendaciones del entrenador se basan en ACSM, OMS y revisiones científicas citadas en cada aviso.</p>
+    </section>
     <section class="card danger">
       <h3>Borrar datos</h3>
-      <p class="muted">Elimina todas las sesiones y vídeos personalizados de este dispositivo.</p>
+      <p class="muted">Elimina todas las sesiones, los vídeos personalizados y los cambios en las rutinas de este dispositivo.</p>
       <button class="btn danger" data-action="clear">🗑️ Borrar todo</button>
     </section>`;
 }
@@ -904,6 +1204,19 @@ view.addEventListener('click', (e) => {
         render();
       }
       break;
+    case 'accept-proposal':
+    case 'edit-proposal':
+    case 'snooze-proposal':
+      proposalAction(action, Number(btn.closest('[data-routine]').dataset.routine));
+      break;
+    case 'ex-up':
+    case 'ex-down':
+    case 'ex-remove':
+      moveExercise(action, Number(btn.closest('[data-i]').dataset.i));
+      break;
+    case 'save-routine':
+      saveDraft();
+      break;
     default:
   }
 });
@@ -939,6 +1252,10 @@ function updateSet(date, exId, i, rowEl, action, btn) {
 
 view.addEventListener('change', (e) => {
   const input = e.target;
+  if (draft && input.closest('.routine-form, .edit-list, .add-ex')) {
+    if (editDraft(input)) render();
+    return;
+  }
   if (input.dataset.action === 'import') {
     importData(input.files[0]);
     input.value = '';
@@ -974,6 +1291,10 @@ view.addEventListener('change', (e) => {
   store.save();
 });
 
+view.addEventListener('input', (e) => {
+  if (draft && e.target.matches('.routine-form [data-rfield]')) editDraft(e.target);
+});
+
 view.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && e.target.matches('[data-note]')) {
     e.preventDefault();
@@ -995,6 +1316,7 @@ function render() {
   const [route, param] = location.hash.replace(/^#\/?/, '').split('/');
   let tab = route || 'hoy';
   delete view.dataset.date;
+  if (route !== 'rutinas' || !param) draft = null;
   switch (route) {
     case 'dia':
       if (/^\d{4}-\d{2}-\d{2}$/.test(param) && param <= todayStr()) {
@@ -1015,6 +1337,11 @@ function render() {
     case 'ajustes':
       renderSettings();
       break;
+    case 'rutinas':
+      tab = 'ajustes';
+      if (param) renderRoutineEditor(param);
+      else renderRoutines();
+      break;
     default:
       tab = 'hoy';
       renderDay(todayStr());
@@ -1034,7 +1361,7 @@ render();
 showSplash();
 precacheGifs();
 
-/** Avisa en consola de errores al editar rutinas/ejercicios en data.js. */
+/** Avisa en consola de errores en data.js (catálogo y rutinas de partida). */
 function checkData() {
   const ids = ROUTINES.map((r) => r.id);
   ids.filter((id, i) => ids.indexOf(id) !== i).forEach((id) => console.error(`[IvanGym] id de rutina repetido: ${id}`));
@@ -1044,8 +1371,11 @@ function checkData() {
       if (!EXERCISES[p.id]) console.error(`[IvanGym] la rutina ${r.id} usa un ejercicio que no existe: ${p.id}`);
     });
   });
-  if (!activeRoutines().length) console.error('[IvanGym] no hay ninguna rutina activa');
+  if (!ROUTINES.some((r) => r.active !== false)) console.error('[IvanGym] no hay ninguna rutina de partida activa');
   unknownMuscles(EXERCISES).forEach((n) => console.error(`[IvanGym] músculo sin grupo en js/muscles.js: ${n}`));
+  Object.entries(EXERCISES).forEach(([id, e]) => {
+    if (!PATTERNS[e.pattern]) console.error(`[IvanGym] el ejercicio ${id} no tiene un pattern válido: ${e.pattern}`);
+  });
 }
 
 /** Guarda en caché los GIF de las rutinas activas para verlos sin conexión en el gimnasio. */

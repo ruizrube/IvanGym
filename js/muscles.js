@@ -301,10 +301,12 @@ export const viewsOf = (id) => Object.keys(VIEWS).filter((k) => VIEWS[k].polys[i
  *   primary / secondary → ids resaltados
  *   labels              → muestra los nombres con líneas guía
  *   interactive         → los músculos llevan data-muscle (para abrir su ficha)
+ *   levels              → { id: nivel } añade la clase lv-<nivel> (mapa de volumen semanal)
  */
-export function bodySvg(view, { primary = [], secondary = [], labels = false, interactive = false } = {}) {
+export function bodySvg(view, { primary = [], secondary = [], labels = false, interactive = false, levels = null } = {}) {
   const v = VIEWS[view];
-  const cls = (id) => (primary.includes(id) ? ' pri' : secondary.includes(id) ? ' sec' : '');
+  const cls = (id) => (primary.includes(id) ? ' pri' : secondary.includes(id) ? ' sec' : '')
+    + (levels?.[id] ? ` lv-${levels[id]}` : '');
   const attrs = (id) => (interactive ? ` data-muscle="${id}"` : '');
   const shapes = Object.entries(v.polys).map(([id, list]) => (id === '_'
     ? list.map((p) => `<polygon class="bone" points="${p}"/>`).join('')
